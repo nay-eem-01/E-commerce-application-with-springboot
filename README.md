@@ -38,7 +38,6 @@ This project follows a typical layered architecture:
 - **Utilities**: Helper classes for common functions, including JWT management.
 ## Usage
 
-- Access the application at [http://localhost:8080](http://localhost:8080).
 - Use Postman or any API client to test endpoints for authentication, cart management, and product management.
 - Sign up using `/api/auth/signup` and log in using `/api/auth/signin` to receive a JWT token.
 - Use the token for subsequent authenticated requests.
