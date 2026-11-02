@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.ecommerce</groupId>
+		<artifactId>ecommerce-app</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>ecommerce-review</artifactId>
+	<name>Ecommerce Review</name>
+	<description>Verified-buyer product reviews and rating summaries.</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.ecommerce</groupId>
+			<artifactId>ecommerce-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.ecommerce</groupId>
+			<artifactId>ecommerce-catalog</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.ecommerce</groupId>
+			<artifactId>ecommerce-order</artifactId>
+		</dependency>
+	</dependencies>
+
+</project>
