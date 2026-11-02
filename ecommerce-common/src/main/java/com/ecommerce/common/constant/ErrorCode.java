@@ -58,6 +58,10 @@ public final class ErrorCode {
 	public static final String EMPTY_ORDER = "Add at least one item before placing an order.";
 	public static final String ILLEGAL_ORDER_TRANSITION = "This order cannot move to that step from its current status.";
 	public static final String ORDER_NOT_CANCELLABLE = "This order is already packed and can no longer be cancelled online. Call us instead.";
+	public static final String PAYMENT_PROVIDER_ERROR = "We could not reach the payment service. Your order is saved; try paying again in a minute.";
+	public static final String PAYMENT_NOT_FOUND = "Payment not found.";
+	public static final String PAYMENT_NOT_RETRYABLE = "This order cannot be paid online now.";
+	public static final String ORDER_NOT_PAID = "This order is not paid yet. Online orders are packed after payment.";
 	public static final String PAYMENT_METHOD_UNAVAILABLE = "This payment method is not available yet. Choose cash on delivery.";
 	public static final String UNKNOWN_DISTRICT = "We do not deliver to that district yet.";
 	public static final String IDEMPOTENCY_KEY_REUSED = "This Idempotency-Key was already used for a different order.";

@@ -20,7 +20,7 @@
 
 	<!--
 		Modular monolith (see docs/PLAN.md, decision 1). Dependency direction:
-		common <- user, catalog <- cart, order <- review <- api.
+		common <- user, catalog, payment <- cart, order <- review <- api.
 		A module never imports another module's entities or repositories.
 	-->
 	<modules>
@@ -28,6 +28,7 @@
 		<module>ecommerce-user</module>
 		<module>ecommerce-catalog</module>
 		<module>ecommerce-cart</module>
+		<module>ecommerce-payment</module>
 		<module>ecommerce-order</module>
 		<module>ecommerce-review</module>
 		<module>ecommerce-api</module>
@@ -62,6 +63,11 @@
 			<dependency>
 				<groupId>com.ecommerce</groupId>
 				<artifactId>ecommerce-cart</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.ecommerce</groupId>
+				<artifactId>ecommerce-payment</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
