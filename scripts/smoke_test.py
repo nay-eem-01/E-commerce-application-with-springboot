@@ -134,7 +134,7 @@ check("unknown payment reference", st == 303 and "payment=UNKNOWN" in loc, (st, 
 st, loc = get_no_redirect(BASE + "/api/payments/paypal/callback?x=1")
 check("unknown provider", st == 303 and "payment=UNKNOWN" in loc, (st, loc))
 
-s, r = call("POST", "/api/orders", dict(online_body, paymentMethod="CARD"), headers={"Idempotency-Key": str(uuid.uuid4())})
+s, r = call("POST", "/api/orders", dict(online_body, paymentMethod="CARD", email="card.buyer@example.com"), headers={"Idempotency-Key": str(uuid.uuid4())})
 card_no = r["payload"]["orderNumber"]
 st, loc = get_no_redirect(r["payload"]["paymentAction"]["url"].replace("outcome=success", "outcome=fail"))
 check("failed card payment", st == 303 and "payment=FAILED" in loc, (st, loc))
@@ -199,7 +199,7 @@ check("wishlist", s == 200 and r["payload"][0]["slug"] == "silver-wig", r)
 
 # --- member checkout clears bought lines and saves address ---
 s, r = call("POST", "/api/orders", {"items": [{"productId": kitsune["id"], "optionId": m["id"], "quantity": 2}],
-                                     "fullName": "Tasnim Rahman", "phone": "01911111111", "district": "Gazipur",
+                                     "fullName": "Tasnim Rahman", "phone": "01911111111", "email": "tasnim@example.com", "district": "Gazipur",
                                      "area": "Tongi", "addressLine": "Road 3, House 9", "paymentMethod": "COD"},
             token=tok, headers={"Idempotency-Key": str(uuid.uuid4())})
 check("member order", s == 201 and r["payload"]["deliveryFee"] == 0 and r["payload"]["amountDueOnDelivery"] == 8400, r)
@@ -262,6 +262,30 @@ s, r = call("PATCH", f"/api/admin/orders/{guest_no}/status", {"action": "CANCEL"
 check("cancel guest order", s == 200 and r["payload"]["status"] == "CANCELLED", r)
 s, r = call("GET", "/api/products/silver-wig")
 check("cancel restored stock (2 -> 3)", r["payload"]["stockLeft"] == 3, r["payload"]["stockLeft"])
+
+# --- order emails (development: logged, not sent) ---
+def emails_for(order_no, wait=8):
+    deadline = time.time() + wait
+    while time.time() < deadline:
+        s, r = call("GET", f"/api/admin/notifications?orderNumber={order_no}", token=adm)
+        rows = r["payload"]["content"] if s == 200 else []
+        if rows and all(x["status"] == "SENT" for x in rows):
+            return rows
+        time.sleep(1)
+    return rows
+
+mails = emails_for(member_no)
+subjects = sorted(m["subject"] for m in mails)
+check("member got placed, shipped and delivered emails", len(mails) == 3 and any("received" in x for x in subjects)
+      and any("on its way" in x for x in subjects) and any("delivered" in x for x in subjects), subjects)
+check("emails were dispatched", all(m["status"] == "SENT" for m in mails) and f"Order {member_no} delivered" in open(LOG).read(), mails)
+check("log masks the address", "t*****@example.com" in open(LOG).read() and "tasnim@example.com" not in open(LOG).read(), "")
+card_mails = emails_for(card_no)
+check("card order: placed + payment received", sorted(m["dedupKey"].split(":")[1] for m in card_mails) == ["PAYMENT_RECEIVED", "PLACED"], card_mails)
+s, r = call("GET", f"/api/admin/notifications?orderNumber={guest_no}", token=adm)
+check("no email address, no email", s == 200 and r["payload"]["totalElements"] == 0, r)
+s, r = call("GET", "/api/admin/notifications", token=other)
+check("customers cannot read the outbox", s == 403, s)
 
 # --- review after delivery ---
 s, r = call("POST", "/api/products/kitsune-set/reviews", {"rating": 5, "body": "Great costume, fits well."}, token=tok)

@@ -4,6 +4,7 @@ import com.ecommerce.catalog.api.CatalogApi;
 import com.ecommerce.catalog.api.LineRequest;
 import com.ecommerce.catalog.api.PricedLine;
 import com.ecommerce.common.constant.ErrorCode;
+import com.ecommerce.common.event.OrderNotificationEvent;
 import com.ecommerce.common.event.OrderPlacedEvent;
 import com.ecommerce.common.exception.ResponseException;
 import com.ecommerce.common.logging.LogMasks;
@@ -165,6 +166,9 @@ public class CheckoutService {
 				lines.stream().map(l -> new OrderPlacedEvent.Line(l.productId(), l.optionId(), l.quantity())).toList(),
 				new OrderPlacedEvent.Address(order.getCustomerName(), phone, district, order.getArea(), order.getAddressLine()),
 				request.isSaveAddress()));
+
+		events.publishEvent(OrderNotifications.event(OrderNotificationEvent.Type.PLACED, order,
+				feeCalculator.estimate(district), null));
 
 		log.info("Order {} placed: {} lines, total {} {}, {} for {}", order.getOrderNumber(), order.getItems().size(),
 				order.getTotal(), method, userId == null ? "guest" : "user " + userId, LogMasks.maskPhone(phone));

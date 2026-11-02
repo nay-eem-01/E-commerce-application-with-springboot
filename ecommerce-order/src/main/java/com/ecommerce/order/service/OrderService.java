@@ -5,6 +5,7 @@ import com.ecommerce.catalog.api.LineRequest;
 import com.ecommerce.common.constant.AppConstants;
 import com.ecommerce.common.constant.ErrorCode;
 import com.ecommerce.common.enums.AscOrDescType;
+import com.ecommerce.common.event.OrderNotificationEvent;
 import com.ecommerce.common.exception.ResponseException;
 import com.ecommerce.common.model.PageResponse;
 import com.ecommerce.common.phone.PhoneNumbers;
@@ -22,6 +23,7 @@ import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.repository.OrderStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,7 @@ public class OrderService {
 	private final DeliveryFeeCalculator feeCalculator;
 	private final CatalogApi catalogApi;
 	private final RateLimiter rateLimiter;
+	private final ApplicationEventPublisher events;
 	private final Clock clock;
 
 	@Transactional(readOnly = true)
@@ -117,6 +120,15 @@ public class OrderService {
 		return paymentApi.startOnline(CheckoutFacade.paymentRequest(order));
 	}
 
+	/** An online payment was confirmed: tell the shopper (cash on delivery is covered by the delivered email). */
+	@Transactional
+	public void announcePayment(Long orderId) {
+		orderRepository.findById(orderId)
+				.filter(o -> o.getPaymentMethod().isOnline())
+				.ifPresent(o -> events.publishEvent(OrderNotifications.event(OrderNotificationEvent.Type.PAYMENT_RECEIVED, o,
+						feeCalculator.estimate(o.getDistrict()), null)));
+	}
+
 	/** An online payment expired: cancel the order and put the stock back (runs in the payment's transaction). */
 	@Transactional
 	public void cancelUnpaid(Long orderId, String paymentReference) {
@@ -153,6 +165,15 @@ public class OrderService {
 				paymentApi.markCashCollected(order.getId());
 			}
 			default -> { }
+		}
+		OrderNotificationEvent.Type notify = switch (to) {
+			case SHIPPED -> OrderNotificationEvent.Type.SHIPPED;
+			case DELIVERED -> OrderNotificationEvent.Type.DELIVERED;
+			case CANCELLED -> OrderNotificationEvent.Type.CANCELLED;
+			default -> null;
+		};
+		if (notify != null) {
+			events.publishEvent(OrderNotifications.event(notify, order, feeCalculator.estimate(order.getDistrict()), blankToNull(note)));
 		}
 		log.info("Order {} {} -> {} by {}", order.getOrderNumber(), from, to, by);
 	}
