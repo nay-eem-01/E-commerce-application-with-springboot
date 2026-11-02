@@ -75,6 +75,15 @@ the previous code is in `docs/PLAN.md` §3 (findings A1 to A18).
 | Log injection / sensitive logs | Correlation id accepted only if it matches `[A-Za-z0-9-]{8,64}`; phones/emails masked; codes, tokens and passwords never logged (except the dev-only console SMS, which refuses to run outside development) |
 | Unbounded queries | `pageSize` clamped to 100; `sortBy` allowlisted (400 otherwise); request lists capped (30 order lines, 50 cart lines) |
 
+### Email
+| Threat | Control |
+|---|---|
+| HTML injection through names or product text | Every value is HTML-escaped in the HTML part; links are built only from `STOREFRONT_URL` and our generated order number |
+| Email for an order that never committed, or duplicates | Outbox row written in the order's transaction; `dedup_key` unique |
+| Personal data lingering | Outbox keeps the rendered email; sent rows are deleted after 30 days; the admin list never returns bodies |
+| Address leaks in logs | Recipients masked (`LogMasks`); bodies logged only at DEBUG by the development log sender |
+| SMTP credentials | Environment only; `MAIL_PROVIDER=smtp` without a host fails startup; production warns when emails are only logged |
+
 ### Transport and platform
 | Topic | Control |
 |---|---|

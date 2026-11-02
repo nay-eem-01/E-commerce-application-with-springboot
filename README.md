@@ -16,6 +16,7 @@ springdoc-openapi · Maven multi-module (modular monolith)
 | `ecommerce-catalog` | Categories, products, options, specs, photos and 360 frames, search, inventory |
 | `ecommerce-cart` | Signed-in cart and wishlist, guest-cart merge |
 | `ecommerce-payment` | Payments behind a provider interface: COD, bKash, SSLCommerz (cards, banks, wallets); vendor chosen by property |
+| `ecommerce-notification` | Order emails through a transactional outbox; SMTP or log sender by property |
 | `ecommerce-order` | Delivery options, quote, checkout, orders, state machine, guest tracking |
 | `ecommerce-review` | Reviews from buyers who received the product |
 | `ecommerce-api` | Bootstrap, security, configuration, Flyway migrations (the deployable) |

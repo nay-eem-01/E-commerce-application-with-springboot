@@ -2,10 +2,10 @@
 
 ## Where we are
 
-Phase 1 (backend rewrite) is done: eight-module modular monolith on Spring Boot 3.5 /
+Phase 1 (backend rewrite) is done: nine-module modular monolith on Spring Boot 3.5 /
 Java 21 / PostgreSQL, every storefront feature from the concept C design has an API, online
-payments are built and switched off. 118 unit tests and a 78-check end-to-end script pass
-against a real database.
+payments are built and switched off, order emails go through a transactional outbox. 136 unit
+tests and an 84-check end-to-end script pass against a real database.
 
 ## Next up
 
@@ -17,9 +17,35 @@ Phase 2: the storefront in its own repository, following concept C exactly (`doc
 - Get bKash and/or SSLCommerz sandbox credentials and run their flows before enabling (`docs/SECURITY.md` S7).
 - Decide the pre-order deposit rule and the payment vendors (`docs/PLAN.md` §7 Q1, Q5).
 - Pick an SMS provider and start sender-ID paperwork (`docs/PLAN.md` R1).
+- Choose an email provider (SMTP account or SES/SendGrid) and a sending domain with SPF/DKIM.
 - CI is not set up yet; run `./mvnw -B verify` before every push.
 
 ---
+
+## 2026-11-02: Order emails (step 1.12)
+
+**Done**
+- New module `ecommerce-notification`: `OrderNotificationEvent` (placed, payment received,
+  shipped, delivered, cancelled) from the order module becomes a rendered email in
+  `notification_outbox` (V7) inside the same transaction.
+- `OutboxDispatcher` claims due rows with `FOR UPDATE SKIP LOCKED`, sends outside any
+  transaction, backs off 1 min / 5 min / 30 min / 2 h, and marks a row FAILED after 5 tries.
+- Senders by property: `smtp` (Spring Mail, multipart text + HTML) and `log` (development).
+  Optional staff copy of every new order (`MAIL_STAFF_ADDRESS`). Admin list and retry
+  (`NOTIFICATION_MANAGE`).
+
+**Decisions**
+- Emails only when the shopper gave an email; no marketing, so no unsubscribe flow.
+- Rendered at queue time (the email reflects the order as it was), deleted 30 days after sending.
+
+**Bugs found and fixed before commit**
+- `mail.smtp.auth` was hard-coded to true, so any relay without credentials failed every send.
+  Found by running the app against a real SMTP server; now `MAIL_SMTP_AUTH` /
+  `MAIL_SMTP_STARTTLS` (default true), with a regression test. The emails queued during the
+  failure were delivered by the retry after the fix, as designed.
+
+**Known limitations**
+- No SPF/DKIM guidance per provider yet; SMS notifications still to do (roadmap 4.2).
 
 ## 2026-11-02: Online payments (step 1.11)
 

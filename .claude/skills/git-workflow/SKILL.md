@@ -23,7 +23,7 @@ Read `docs/DEV_LOG.md` ("Where we are", "Next up", "Open items") and `docs/ROADM
 ## Commits
 
 - `type(scope): subject` - types `feat fix docs test refactor chore`; scopes are module names
-  (`common user catalog cart order review api`). Imperative subject, <= 72 chars.
+  (`common user catalog cart payment notification order review api`). Imperative subject, <= 72 chars.
 - Body explains why (finding, decision, trade-off) when not obvious.
 - One coherent change per commit that builds and passes tests; regression test in the same
   commit as its fix. Split steps that touch more than ~10-15 files.
