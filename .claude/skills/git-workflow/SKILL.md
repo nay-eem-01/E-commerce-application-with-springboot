@@ -27,6 +27,8 @@ Read `docs/DEV_LOG.md` ("Where we are", "Next up", "Open items") and `docs/ROADM
 - Body explains why (finding, decision, trade-off) when not obvious.
 - One coherent change per commit that builds and passes tests; regression test in the same
   commit as its fix. Split steps that touch more than ~10-15 files.
+- Author and committer are **nay-eem-01** (`110116452+nay-eem-01@users.noreply.github.com`);
+  set it with `git config user.name/user.email` in the clone if the environment defaults differ.
 - **No `Co-Authored-By` and no Claude/AI attribution.** Never commit `.env`, keys, tokens, dumps.
 
 ## Before pushing

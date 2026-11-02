@@ -1,6 +1,6 @@
 # ERD
 
-**Source of truth:** `ecommerce-api/src/main/resources/db/migration/V1..V5`. Hibernate only
+**Source of truth:** `ecommerce-api/src/main/resources/db/migration/V1..V6`. Hibernate only
 validates against it (`ddl-auto=validate`). Every table except the small child/seed tables
 carries the audit columns `created_by, last_modified_by, creation_date, last_modified_date`.
 
@@ -28,7 +28,8 @@ erDiagram
     USERS |o--o{ ORDERS : "null for guests"
     ORDERS ||--o{ ORDER_ITEMS : "price snapshot"
     ORDERS ||--o{ ORDER_STATUS_HISTORY : "append-only"
-    ORDERS ||--o{ PAYMENTS : attempts
+    ORDERS ||--o{ PAYMENTS : "attempts (order_id only)"
+    PAYMENTS ||--o{ PAYMENT_EVENTS : "append-only audit"
     PRODUCTS ||--o{ ORDER_ITEMS : "id only"
 
     PRODUCTS ||--o{ REVIEWS : about
@@ -42,7 +43,8 @@ erDiagram
 | `ecommerce-user` | `users`, `roles`, `privileges`, `users_roles`, `roles_privileges`, `user_sessions`, `refresh_tokens`, `otp_verifications`, `addresses` |
 | `ecommerce-catalog` | `categories`, `products`, `product_options`, `product_facts`, `product_box_items`, `product_media` |
 | `ecommerce-cart` | `cart_items`, `wishlist_items` |
-| `ecommerce-order` | `orders`, `order_items`, `order_status_history`, `payments` |
+| `ecommerce-payment` | `payments`, `payment_events` (taken over from order in V6) |
+| `ecommerce-order` | `orders`, `order_items`, `order_status_history` |
 | `ecommerce-review` | `reviews` |
 
 Cross-module links (`cart_items.product_id`, `order_items.product_id`, `orders.user_id`,
@@ -60,7 +62,8 @@ Cross-module links (`cart_items.product_id`, `order_items.product_id`, `orders.u
 | One cart line per product + option | `UNIQUE NULLS NOT DISTINCT (user_id, product_id, option_id)` (PostgreSQL 15+) |
 | Totals add up | `orders_total_adds_up`, `line_total = unit_price * quantity` |
 | A retried checkout cannot create a second order | `orders.idempotency_key UNIQUE` |
-| Status history is never edited | `BEFORE UPDATE` trigger raises |
+| Status history and payment events are never edited | `BEFORE UPDATE` triggers raise |
+| One row per vendor payment | Partial unique index on `(provider, provider_payment_id)`; `payments.reference` unique |
 | One review per buyer per product | `reviews_one_per_buyer` |
 | Removing a product option never breaks history | `order_items.option_id ON DELETE SET NULL` (label is snapshotted); cart lines cascade |
 

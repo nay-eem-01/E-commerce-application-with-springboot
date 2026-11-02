@@ -14,14 +14,12 @@ import com.ecommerce.order.dto.response.OrderResponse;
 import com.ecommerce.order.dto.response.OrderSummaryResponse;
 import com.ecommerce.order.dto.response.TrackingResponse;
 import com.ecommerce.order.entity.Order;
-import com.ecommerce.order.entity.Payment;
 import com.ecommerce.order.enums.OrderAction;
 import com.ecommerce.order.enums.OrderStatus;
-import com.ecommerce.order.enums.PaymentMethod;
-import com.ecommerce.order.enums.PaymentStatus;
+import com.ecommerce.payment.api.PaymentAction;
+import com.ecommerce.payment.api.PaymentApi;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.repository.OrderStatusHistoryRepository;
-import com.ecommerce.order.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,7 +44,7 @@ public class OrderService {
 
 	private final OrderRepository orderRepository;
 	private final OrderStatusHistoryRepository historyRepository;
-	private final PaymentRepository paymentRepository;
+	private final PaymentApi paymentApi;
 	private final DeliveryFeeCalculator feeCalculator;
 	private final CatalogApi catalogApi;
 	private final RateLimiter rateLimiter;
@@ -105,32 +103,54 @@ public class OrderService {
 	}
 
 	/**
+	 * Retry an online payment: guests and members alike, with the order number and the phone it
+	 * was placed with. Not transactional: the provider call must not hold a transaction open.
+	 */
+	public PaymentAction retryPayment(String orderNumber, String rawPhone, String ip) {
+		rateLimiter.hit("pay-retry:ip:" + ip, 10, Duration.ofMinutes(15));
+		String phone = PhoneNumbers.normalize(rawPhone).orElseThrow(() -> ResponseException.notFound(ErrorCode.ORDER_NOT_FOUND));
+		Order order = orderRepository.findByOrderNumberAndPhone(orderNumber.trim().toUpperCase(Locale.ROOT), phone)
+				.orElseThrow(() -> ResponseException.notFound(ErrorCode.ORDER_NOT_FOUND));
+		if (order.getStatus() != OrderStatus.PLACED || !order.getPaymentMethod().isOnline() || paymentApi.isPaid(order.getId())) {
+			throw ResponseException.conflict(ErrorCode.PAYMENT_NOT_RETRYABLE);
+		}
+		return paymentApi.startOnline(CheckoutFacade.paymentRequest(order));
+	}
+
+	/** An online payment expired: cancel the order and put the stock back (runs in the payment's transaction). */
+	@Transactional
+	public void cancelUnpaid(Long orderId, String paymentReference) {
+		orderRepository.findById(orderId)
+				.filter(o -> o.getStatus() == OrderStatus.PLACED && o.getPaymentMethod().isOnline())
+				.filter(o -> !paymentApi.isPaid(o.getId()))
+				.ifPresent(o -> apply(o, OrderAction.CANCEL, "Payment " + paymentReference + " was not completed in time", "SYSTEM"));
+	}
+
+	/**
 	 * Moves the order, writes the history row and applies side effects in one transaction:
-	 * cancel puts stock back and voids the payment; deliver marks COD as collected.
+	 * cancel puts stock back and settles the payment (cancels it, or refunds a paid online
+	 * payment); deliver marks COD as collected. Online orders are packed only once paid.
 	 * A returned item's stock is not restored automatically - staff restock after inspection.
 	 */
 	private void apply(Order order, OrderAction action, String note, String by) {
 		OrderStatus from = order.getStatus();
 		OrderStatus to = OrderStateMachine.next(from, action);
+		if (action == OrderAction.PACK && order.getPaymentMethod().isOnline() && !paymentApi.isPaid(order.getId())) {
+			throw ResponseException.conflict(ErrorCode.ORDER_NOT_PAID);
+		}
 		Instant now = clock.instant();
 		order.setStatus(to);
 		historyRepository.save(CheckoutService.history(order, from, to, blankToNull(note), by, now));
 
-		Payment payment = paymentRepository.findFirstByOrderIdOrderByIdDesc(order.getId()).orElse(null);
 		switch (to) {
 			case CANCELLED -> {
 				catalogApi.release(order.getItems().stream()
 						.map(i -> new LineRequest(i.getProductId(), i.getOptionId(), i.getQuantity())).toList());
-				if (payment != null && payment.getStatus() == PaymentStatus.PENDING) {
-					payment.setStatus(PaymentStatus.VOIDED);
-				}
+				paymentApi.settleCancellation(order.getId());
 			}
 			case DELIVERED -> {
 				order.setDeliveredAt(now);
-				if (payment != null && payment.getMethod() == PaymentMethod.COD && payment.getStatus() == PaymentStatus.PENDING) {
-					payment.setStatus(PaymentStatus.PAID);
-					payment.setPaidAt(now);
-				}
+				paymentApi.markCashCollected(order.getId());
 			}
 			default -> { }
 		}
@@ -148,10 +168,8 @@ public class OrderService {
 	}
 
 	private OrderResponse view(Order order) {
-		PaymentStatus status = paymentRepository.findFirstByOrderIdOrderByIdDesc(order.getId())
-				.map(Payment::getStatus).orElse(PaymentStatus.PENDING);
-		return OrderResponse.from(order, historyRepository.findByOrderIdOrderByIdAsc(order.getId()), status,
-				feeCalculator.estimate(order.getDistrict()), null);
+		return OrderResponse.from(order, historyRepository.findByOrderIdOrderByIdAsc(order.getId()),
+				paymentApi.statusOf(order.getId()), feeCalculator.estimate(order.getDistrict()), null);
 	}
 
 	private static String blankToNull(String s) {

@@ -2,9 +2,10 @@
 
 ## Where we are
 
-Phase 1 (backend rewrite) is done: seven-module modular monolith on Spring Boot 3.5 /
-Java 21 / PostgreSQL, every storefront feature from the concept C design has an API, 91 unit
-tests and a 66-check end-to-end script pass against a real database.
+Phase 1 (backend rewrite) is done: eight-module modular monolith on Spring Boot 3.5 /
+Java 21 / PostgreSQL, every storefront feature from the concept C design has an API, online
+payments are built and switched off. 118 unit tests and a 78-check end-to-end script pass
+against a real database.
 
 ## Next up
 
@@ -13,11 +14,45 @@ Phase 2: the storefront in its own repository, following concept C exactly (`doc
 ## Open items
 
 - Rotate the JWT secret and MySQL password that were committed by the old code (`docs/SECURITY.md` S1).
-- Decide the pre-order deposit rule before enabling bKash (`docs/PLAN.md` §7 Q1).
+- Get bKash and/or SSLCommerz sandbox credentials and run their flows before enabling (`docs/SECURITY.md` S7).
+- Decide the pre-order deposit rule and the payment vendors (`docs/PLAN.md` §7 Q1, Q5).
 - Pick an SMS provider and start sender-ID paperwork (`docs/PLAN.md` R1).
 - CI is not set up yet; run `./mvnw -B verify` before every push.
 
 ---
+
+## 2026-11-02: Online payments (step 1.11)
+
+**Done**
+- New module `ecommerce-payment` owns `payments` (moved from order) and `payment_events` (V6).
+- `PaymentProvider` SPI with `bkash` (tokenized checkout: grant, create, execute, status,
+  refund), `sslcommerz` (session, Order Validation API, transaction query, refund) and `fake`
+  (development only) adapters. `PaymentRouting` maps each method to a provider from
+  `app.payment.routes.*` and fails startup on a bad configuration.
+- Checkout: COD unchanged; an online order reserves stock, commits, then opens the payment
+  outside the transaction and returns `paymentAction.url`. Callbacks (`/api/payments/{provider}/callback`)
+  and IPNs (`/ipn`) are verified with the vendor and redirect to `PAYMENT_RETURN_URL`.
+- `POST /api/orders/pay` retries a payment; unpaid online orders expire after 30 minutes
+  (order cancelled, stock restored); unpaid online orders cannot be packed; cancelling a paid
+  online order refunds it; money arriving late is refunded automatically.
+
+**Decisions**
+- Production default stays `PAYMENT_ENABLED_METHODS=COD`; development enables BKASH and
+  CARD on the fake provider so the storefront can be built against real redirects.
+- Vendor credentials are environment-only; switching vendor is `PAYMENT_ROUTE_<METHOD>`.
+
+**Bugs found and fixed before commit**
+- V6 converted `VOIDED` to `CANCELLED` before dropping the old status CHECK, so it failed on
+  any database that already had a cancelled COD payment. Caught by applying V1 to V5 with data,
+  then V6; the check is now dropped first.
+
+**Breaking API changes**
+- `PaymentStatus.VOIDED` is now `CANCELLED`; new statuses `FAILED`, `EXPIRED`, `REFUNDED`.
+- `paymentAction` is null for an online order whose provider was unreachable.
+
+**Known limitations**
+- Not run against vendor sandboxes yet (no credentials). bKash token cache and the expiry
+  job are per instance. SSLCommerz IPN hash check not added (validation API is authoritative).
 
 ## 2026-11-02: Phase 1, backend rewrite
 

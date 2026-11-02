@@ -44,7 +44,11 @@ The full threat model is `docs/SECURITY.md`; the old code's findings are `docs/P
 - Stock changes only through `CatalogApi.reserve/release` inside the order transaction.
 - `POST /api/orders` requires `Idempotency-Key`.
 - Order status changes only through `OrderStateMachine`; history is append-only (DB trigger).
-- A payment is marked PAID only by the server (COD on delivery, or a verified gateway callback).
+- A payment is marked PAID only by the server: COD on delivery, or an online payment confirmed
+  by the vendor's server (never from callback parameters) with matching amount, currency and
+  reference. Callbacks redirect only to the configured return URL. Vendor HTTP calls stay
+  outside database transactions except a refund during cancellation.
+- Vendor credentials: environment only; never logged; new vendor = new `PaymentProvider` class.
 
 ## Input and output
 

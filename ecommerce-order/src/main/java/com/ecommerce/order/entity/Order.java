@@ -2,7 +2,7 @@ package com.ecommerce.order.entity;
 
 import com.ecommerce.common.model.AuditModel;
 import com.ecommerce.order.enums.OrderStatus;
-import com.ecommerce.order.enums.PaymentMethod;
+import com.ecommerce.payment.api.PaymentMethod;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

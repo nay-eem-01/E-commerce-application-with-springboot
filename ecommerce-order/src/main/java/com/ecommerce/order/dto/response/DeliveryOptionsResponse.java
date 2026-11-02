@@ -1,6 +1,6 @@
 package com.ecommerce.order.dto.response;
 
-import com.ecommerce.order.enums.PaymentMethod;
+import com.ecommerce.payment.api.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.util.List;

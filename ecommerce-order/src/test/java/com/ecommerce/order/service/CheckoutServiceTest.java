@@ -6,16 +6,14 @@ import com.ecommerce.catalog.enums.StockState;
 import com.ecommerce.common.exception.ResponseException;
 import com.ecommerce.common.ratelimit.InMemoryRateLimiter;
 import com.ecommerce.order.config.DeliveryProperties;
-import com.ecommerce.order.config.PaymentProperties;
 import com.ecommerce.order.dto.request.CheckoutLine;
 import com.ecommerce.order.dto.request.PlaceOrderRequest;
 import com.ecommerce.order.dto.response.QuoteResponse;
 import com.ecommerce.order.entity.Order;
-import com.ecommerce.order.enums.PaymentMethod;
-import com.ecommerce.order.payment.CashOnDeliveryGateway;
+import com.ecommerce.payment.api.PaymentApi;
+import com.ecommerce.payment.api.PaymentMethod;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.repository.OrderStatusHistoryRepository;
-import com.ecommerce.order.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,7 +23,6 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,16 +36,17 @@ class CheckoutServiceTest {
 
 	private final CatalogApi catalog = mock(CatalogApi.class);
 	private final OrderRepository orders = mock(OrderRepository.class);
+	private final PaymentApi payments = mock(PaymentApi.class);
 	private final DeliveryProperties delivery = new DeliveryProperties(new BigDecimal("70"), new BigDecimal("130"),
 			new BigDecimal("3000"), List.of("Dhaka"), List.of("Dhaka", "Sylhet"), "1 to 2 days", "2 to 4 days");
 	private CheckoutService service;
 
 	@BeforeEach
 	void setUp() {
-		service = new CheckoutService(catalog, new DeliveryFeeCalculator(delivery), delivery,
-				new PaymentProperties(Set.of(PaymentMethod.COD)), List.of(new CashOnDeliveryGateway()),
-				new OrderNumberGenerator(), orders, mock(OrderStatusHistoryRepository.class), mock(PaymentRepository.class),
+		service = new CheckoutService(catalog, new DeliveryFeeCalculator(delivery), delivery, payments,
+				new OrderNumberGenerator(), orders, mock(OrderStatusHistoryRepository.class),
 				mock(ApplicationEventPublisher.class), new InMemoryRateLimiter(), Clock.systemUTC());
+		when(payments.isAvailable(PaymentMethod.COD)).thenReturn(true);
 	}
 
 	@Test

@@ -6,9 +6,9 @@ import com.ecommerce.order.entity.Order;
 import com.ecommerce.order.entity.OrderItem;
 import com.ecommerce.order.entity.OrderStatusHistory;
 import com.ecommerce.order.enums.OrderStatus;
-import com.ecommerce.order.enums.PaymentMethod;
-import com.ecommerce.order.enums.PaymentStatus;
-import com.ecommerce.order.payment.PaymentGateway;
+import com.ecommerce.payment.api.PaymentMethod;
+import com.ecommerce.payment.api.PaymentStatus;
+import com.ecommerce.payment.api.PaymentAction;
 import com.ecommerce.order.service.OrderStateMachine;
 
 import java.math.BigDecimal;
@@ -40,8 +40,11 @@ public record OrderResponse(
 		String deliveryEstimate,
 		List<TimelineEntry> timeline,
 		boolean canCancel,
-		/** Set only right after placing an order with an online method. */
-		PaymentGateway.PaymentAction paymentAction
+		/**
+		 * NONE for cash on delivery; REDIRECT (to the provider's page) right after placing an online
+		 * order; null otherwise, or when the provider was unreachable (offer POST /api/orders/pay).
+		 */
+		PaymentAction paymentAction
 ) {
 	public record ItemResponse(Long productId, Long optionId, String slug, String name, String optionLabel,
 							   BigDecimal unitPrice, int quantity, BigDecimal lineTotal, boolean preorder,
@@ -59,8 +62,16 @@ public record OrderResponse(
 		}
 	}
 
+	public OrderResponse withPayment(PaymentStatus newStatus, PaymentAction action) {
+		BigDecimal due = paymentMethod == PaymentMethod.COD && newStatus == PaymentStatus.PENDING
+				&& status != OrderStatus.CANCELLED ? total : Money.ZERO;
+		return new OrderResponse(orderNumber, status, placedAt, deliveredAt, fullName, phone, email, district, area,
+				addressLine, note, paymentMethod, newStatus, items, subtotal, deliveryFee, total, depositTotal, due,
+				deliveryEstimate, timeline, canCancel, action);
+	}
+
 	public static OrderResponse from(Order o, List<OrderStatusHistory> history, PaymentStatus paymentStatus,
-									 String estimate, PaymentGateway.PaymentAction action) {
+									 String estimate, PaymentAction action) {
 		BigDecimal due = o.getPaymentMethod() == PaymentMethod.COD && paymentStatus == PaymentStatus.PENDING
 				&& o.getStatus() != OrderStatus.CANCELLED ? o.getTotal() : Money.ZERO;
 		return new OrderResponse(

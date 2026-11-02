@@ -1,6 +1,6 @@
 package com.ecommerce.order.dto.request;
 
-import com.ecommerce.order.enums.PaymentMethod;
+import com.ecommerce.payment.api.PaymentMethod;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

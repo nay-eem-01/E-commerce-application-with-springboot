@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.ecommerce</groupId>
+		<artifactId>ecommerce-app</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>ecommerce-payment</artifactId>
+	<name>Ecommerce Payment</name>
+	<description>Payments behind a provider interface: cash on delivery, bKash, SSLCommerz (cards and banks). The vendor for each method is a property.</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.ecommerce</groupId>
+			<artifactId>ecommerce-common</artifactId>
+		</dependency>
+	</dependencies>
+
+</project>

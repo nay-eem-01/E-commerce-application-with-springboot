@@ -36,7 +36,11 @@ git checkout -b feat/product-page
 - **One coherent change per commit that builds and passes tests.** A regression test ships in
   the same commit as its fix.
 - **Small PRs.** If a step would touch more than ~10 to 15 files, split the step first.
-- Author identity only. **No `Co-Authored-By` and no AI attribution** in commits or PRs.
+- Author and committer are **nay-eem-01** (`110116452+nay-eem-01@users.noreply.github.com`).
+  In a fresh clone or a cloud session, set it first:
+  `git config user.name "nay-eem-01"` and
+  `git config user.email "110116452+nay-eem-01@users.noreply.github.com"`.
+- **No `Co-Authored-By` and no AI attribution** in commits or PRs.
 - Never commit `.env`, keys, tokens, dumps or binaries.
 
 Example:
@@ -93,5 +97,5 @@ A tiny `docs: tick roadmap x.y` commit on the step branch is the norm.
 - Never force-push, `reset --hard`, `clean -fd`, rewrite published history or delete branches
   without an explicit instruction naming the action. Purging leaked secrets from history is
   the owner's call; rotating them comes first.
-- When a session is pinned to a specific branch by its environment (for example a
-  `claude/...` branch in a cloud session), work and push there, and say so in the PR.
+- Even when a cloud session is pinned to a `claude/...` branch, still create the phase base and
+  step branches above and push those; the owner opens the PRs.
