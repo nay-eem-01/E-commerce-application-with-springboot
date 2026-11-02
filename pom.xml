@@ -27,6 +27,7 @@
 		<module>ecommerce-common</module>
 		<module>ecommerce-user</module>
 		<module>ecommerce-catalog</module>
+		<module>ecommerce-cart</module>
 	</modules>
 
 	<properties>
