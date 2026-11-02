@@ -28,6 +28,7 @@
 		<module>ecommerce-user</module>
 		<module>ecommerce-catalog</module>
 		<module>ecommerce-cart</module>
+		<module>ecommerce-order</module>
 	</modules>
 
 	<properties>
