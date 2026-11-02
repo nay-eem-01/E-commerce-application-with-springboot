@@ -66,6 +66,10 @@ public final class ErrorCode {
 	public static final String UNKNOWN_DISTRICT = "We do not deliver to that district yet.";
 	public static final String IDEMPOTENCY_KEY_REUSED = "This Idempotency-Key was already used for a different order.";
 
+	// notification
+	public static final String NOTIFICATION_NOT_FOUND = "Notification not found.";
+	public static final String NOTIFICATION_NOT_RETRYABLE = "Only failed notifications can be retried.";
+
 	// review
 	public static final String REVIEW_NOT_FOUND = "Review not found.";
 	public static final String REVIEW_NOT_PURCHASED = "You can review products after they are delivered to you.";

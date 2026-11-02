@@ -1,6 +1,6 @@
 # ERD
 
-**Source of truth:** `ecommerce-api/src/main/resources/db/migration/V1..V6`. Hibernate only
+**Source of truth:** `ecommerce-api/src/main/resources/db/migration/V1..V7`. Hibernate only
 validates against it (`ddl-auto=validate`). Every table except the small child/seed tables
 carries the audit columns `created_by, last_modified_by, creation_date, last_modified_date`.
 
@@ -32,6 +32,8 @@ erDiagram
     PAYMENTS ||--o{ PAYMENT_EVENTS : "append-only audit"
     PRODUCTS ||--o{ ORDER_ITEMS : "id only"
 
+    NOTIFICATION_OUTBOX }o..|| ORDERS : "dedup_key = order number : type (no FK)"
+
     PRODUCTS ||--o{ REVIEWS : about
     USERS ||--o{ REVIEWS : "verified buyer, one each"
 ```
@@ -44,6 +46,7 @@ erDiagram
 | `ecommerce-catalog` | `categories`, `products`, `product_options`, `product_facts`, `product_box_items`, `product_media` |
 | `ecommerce-cart` | `cart_items`, `wishlist_items` |
 | `ecommerce-payment` | `payments`, `payment_events` (taken over from order in V6) |
+| `ecommerce-notification` | `notification_outbox` (V7) |
 | `ecommerce-order` | `orders`, `order_items`, `order_status_history` |
 | `ecommerce-review` | `reviews` |
 
@@ -64,6 +67,7 @@ Cross-module links (`cart_items.product_id`, `order_items.product_id`, `orders.u
 | A retried checkout cannot create a second order | `orders.idempotency_key UNIQUE` |
 | Status history and payment events are never edited | `BEFORE UPDATE` triggers raise |
 | One row per vendor payment | Partial unique index on `(provider, provider_payment_id)`; `payments.reference` unique |
+| An email is queued once per order event | `notification_outbox.dedup_key UNIQUE` |
 | One review per buyer per product | `reviews_one_per_buyer` |
 | Removing a product option never breaks history | `order_items.option_id ON DELETE SET NULL` (label is snapshotted); cart lines cascade |
 

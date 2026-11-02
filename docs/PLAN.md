@@ -44,6 +44,7 @@ price**, to **whom**, and **where is it now**.
 | 16 | Admin bootstrap | **`INITIAL_ADMIN_EMAIL` env; password generated or from env; must change on first sign-in** | The old code seeded `admin/adminPass`. |
 | 17 | Git | **Conventional commits, author nay-eem-01, no attribution, step branches** | From delivery_app/AgroTrends; see `docs/GIT_WORKFLOW.md`. |
 | 18 | Online payment trust | **PAID only from the vendor's server answer, with matching amount, currency and reference** | Browser redirect parameters can be forged. Callbacks and IPNs trigger a server-to-server check (bKash execute/status, SSLCommerz validation/query). Money that arrives after an order was given up is refunded automatically. |
+| 20 | Order emails | **`ecommerce-notification` with a transactional outbox; sender is a property (`MAIL_PROVIDER=smtp|log`)** | The email row is written in the same transaction as the order change, so no email for a rolled-back order and no SMTP call inside checkout. A dispatcher sends with `FOR UPDATE SKIP LOCKED` (safe on several instances), retries with backoff, and marks failures for an admin retry. Emails: placed (+ staff copy), payment received, shipped, delivered, cancelled. |
 | 19 | Unpaid online orders | **Stock reserved at checkout; released when the payment expires (30 min) or the order is cancelled** | Prevents overselling while the shopper is on the payment page. Unpaid online orders cannot be packed. |
 
 ---
@@ -90,13 +91,14 @@ ecommerce-app (parent pom)
 ├── ecommerce-cart     signed-in cart and wishlist (uses CatalogApi)
 ├── ecommerce-payment  payments, provider SPI (bkash, sslcommerz, fake), routing by property, callbacks/IPN,
 │                      expiry job. Public surface: PaymentApi
+├── ecommerce-notification  order emails: outbox, templates, dispatcher, sender chosen by property
 ├── ecommerce-order    delivery options, quote, checkout, orders, state machine, tracking (uses CatalogApi,
-│                      PaymentApi). Public surface: PurchaseVerifier
+│                      PaymentApi; publishes OrderNotificationEvent). Public surface: PurchaseVerifier
 ├── ecommerce-review   verified-buyer reviews (uses CatalogApi, PurchaseVerifier)
 └── ecommerce-api      bootstrap, security chain, config, Flyway migrations. Only deployable.
 ```
 
-**Dependency direction:** `common ← user, catalog, payment ← cart, order ← review ← api`.
+**Dependency direction:** `common ← user, catalog, payment, notification ← cart, order ← review ← api`.
 
 **Boundary rules**
 - A module never imports another module's entities or repositories.
@@ -106,7 +108,8 @@ ecommerce-app (parent pom)
   bought lines and user saves the first address. Listeners run synchronously in the order's
   transaction, so a listener failure rolls the order back. Payment events
   (`PaymentSucceededEvent`, `PaymentExpiredEvent`) work the same way: an expired payment
-  cancels its order and restocks it.
+  cancels its order and restocks it. `OrderNotificationEvent` carries an order snapshot to the
+  notification module, which never reads order tables.
 - The caller's identity reaches every module through `CurrentUser` / `AuthenticatedUser`
   (common), implemented by the user module's principal. No module depends on `user`.
 
@@ -118,7 +121,8 @@ ecommerce-app (parent pom)
 | Auth lookups show up in profiles | Cache session + user lookups (short TTL, evicted on revoke) | `JwtAuthenticationFilter` only |
 | Read traffic on the catalog | HTTP caching / Redis cache on `ProductQueryService`; read replica for `GET` | Catalog service only |
 | Search needs ranking or typo tolerance | Generated `tsvector` column + GIN index, later a search engine | `ProductSpecifications.search` only |
-| Order volume needs async work (SMS, email, analytics) | Publish `OrderPlacedEvent` to a broker (outbox table) | Event publisher; listeners stay |
+| Order volume needs async work (SMS, analytics) | Same outbox pattern as email; later a broker reads the outbox | Event publisher; listeners stay |
+| Email volume or deliverability | Swap SMTP for an API sender (SES, SendGrid) | One `EmailSender` class + `MAIL_PROVIDER` |
 | A new payment vendor (Nagad direct, aamarPay, a bank) | One `PaymentProvider` implementation + `PAYMENT_ROUTE_<METHOD>` | That class only |
 | A team owns one domain | Extract a module to a service; its `api` interface becomes an HTTP/gRPC client | That module + its client |
 
@@ -145,7 +149,7 @@ Nothing in this list requires changing controllers or the frontend contract.
 
 ## 6. Out of scope for now (goes in the roadmap, not in code)
 
-Real SMS provider · live payment credentials and sandbox certification · Nagad direct
+Real SMS provider and SMS order notifications · live payment credentials and sandbox certification · Nagad direct
 integration (SSLCommerz covers Nagad today) · image upload · email receipts · promo codes ·
 gacha mechanic · admin web UI · courier integration (e.g. a delivery_app client) ·
 analytics · multi-currency · product variants with more than one option group.

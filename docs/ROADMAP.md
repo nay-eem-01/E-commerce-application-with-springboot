@@ -3,7 +3,7 @@
 Phased steps; one small PR each (see `docs/GIT_WORKFLOW.md`). Tick a step in the same PR
 that finishes it.
 
-**Progress:** Phase 1 done (11/11). Phase 2: 0/7. Phase 3: 0/6. Phase 4: 0/6.
+**Progress:** Phase 1 done (12/12). Phase 2: 0/7. Phase 3: 0/6. Phase 4: 0/6.
 
 ## Phase 1: rewrite the backend (done)
 
@@ -17,6 +17,7 @@ that finishes it.
 - [x] 1.8 Order: state machine, append-only history, customer cancel, admin actions
 - [x] 1.9 Reviews from verified buyers
 - [x] 1.10 Flyway V1 to V5, dev demo catalog, security config, unit tests, end-to-end script, docs
+- [x] 1.12 Order emails: notification module, transactional outbox, SMTP or log sender by property, retries, admin list/retry (V7)
 - [x] 1.11 Payment module: provider SPI, bKash and SSLCommerz adapters (off by default), routing by property, verified callbacks/IPN, retry, expiry, refunds (V6)
 
 ## Phase 2: storefront (frontend repository, follows concept C exactly)
@@ -41,7 +42,7 @@ that finishes it.
 ## Phase 4: growth features
 
 - [ ] 4.1 Activate online payments: sandbox-test bKash and SSLCommerz, set credentials, `PAYMENT_ENABLED_METHODS=COD,BKASH,CARD`; decide the pre-order deposit rule (PLAN §7 Q1)
-- [ ] 4.2 Email/SMS order notifications via an outbox
+- [ ] 4.2 SMS order notifications on the same outbox (email is done in 1.12)
 - [ ] 4.3 Promo codes
 - [ ] 4.4 Courier integration (delivery_app or Steadfast/Pathao) for SHIPPED/DELIVERED updates
 - [ ] 4.5 Admin web UI

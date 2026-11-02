@@ -17,9 +17,10 @@ public final class Privileges {
 	public static final String USER_READ = "USER_READ";
 	public static final String USER_UPDATE = "USER_UPDATE";
 	public static final String REVIEW_MODERATE = "REVIEW_MODERATE";
+	public static final String NOTIFICATION_MANAGE = "NOTIFICATION_MANAGE";
 
 	public static final List<String> ALL = List.of(
 			CATEGORY_WRITE, PRODUCT_WRITE, PRODUCT_READ_ALL, ORDER_READ_ALL,
-			ORDER_UPDATE, USER_READ, USER_UPDATE, REVIEW_MODERATE
+			ORDER_UPDATE, USER_READ, USER_UPDATE, REVIEW_MODERATE, NOTIFICATION_MANAGE
 	);
 }

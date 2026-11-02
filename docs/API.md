@@ -94,6 +94,10 @@ Guests keep the cart in the browser. After sign-in, send it once to `/api/cart/m
 | POST | `/api/orders/me/{orderNumber}/cancel` | auth | only while `PLACED` |
 
 Order statuses: `PLACED → PACKED → SHIPPED → DELIVERED`, or `CANCELLED`, `RETURNED`.
+If the order has an `email`, the shopper is emailed when it is placed, when an online payment
+is received, and when it is shipped, delivered or cancelled. Email links point to
+`STOREFRONT_URL/track?order=...` and `STOREFRONT_URL/orders/{orderNumber}`; the storefront
+should have both routes.
 `OrderResponse.amountDueOnDelivery` is what to tell a COD shopper to have ready.
 `paymentStatus`: `PENDING, PAID, FAILED, CANCELLED, EXPIRED, REFUNDED`.
 `paymentAction`: `{type: "NONE"}` for COD; `{type: "REDIRECT", url}` for an online method
@@ -118,6 +122,8 @@ Order statuses: `PLACED → PACKED → SHIPPED → DELIVERED`, or `CANCELLED`, `
 | GET | `/api/admin/users?q=` | `USER_READ` |
 | PUT | `/api/admin/users/{id}/status` `{status: ACTIVE|BANNED}` | `USER_UPDATE` |
 | PATCH | `/api/admin/reviews/{id}/status` `{status: PUBLISHED|HIDDEN}` | `REVIEW_MODERATE` |
+| GET | `/api/admin/notifications?status=PENDING|SENT|FAILED&orderNumber=` | `NOTIFICATION_MANAGE` |
+| POST | `/api/admin/notifications/{id}/retry` (FAILED only) | `NOTIFICATION_MANAGE` |
 
 ## Flows the storefront needs
 

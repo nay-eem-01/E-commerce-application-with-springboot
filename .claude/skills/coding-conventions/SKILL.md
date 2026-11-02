@@ -23,7 +23,8 @@ themselves with a static `from(...)`.
 | `ecommerce-catalog` | categories, products, inventory; public surface `catalog.api.CatalogApi` |
 | `ecommerce-cart` | cart, wishlist |
 | `ecommerce-payment` | payments, `spi.PaymentProvider` adapters (`provider/<vendor>`), routing by property; public surface `payment.api.PaymentApi` |
-| `ecommerce-order` | checkout, orders, payments; public surface `order.api.PurchaseVerifier` |
+| `ecommerce-notification` | order emails: outbox, templates, dispatcher, `sender.EmailSender` (smtp/log by property) |
+| `ecommerce-order` | checkout, orders; publishes `OrderNotificationEvent`; public surface `order.api.PurchaseVerifier` |
 | `ecommerce-review` | reviews |
 | `ecommerce-api` | bootstrap, `SecurityConfig`, properties, Flyway migrations |
 

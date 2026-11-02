@@ -30,7 +30,8 @@ git checkout -b feat/product-page
 
 - Conventional prefix with an optional scope:
   `feat(order): ...`, `fix(cart): ...`, `docs: ...`, `test(auth): ...`, `refactor: ...`, `chore: ...`.
-  Scopes are module names: `common`, `user`, `catalog`, `cart`, `order`, `review`, `api`.
+  Scopes are module names: `common`, `user`, `catalog`, `cart`, `payment`, `notification`,
+  `order`, `review`, `api`.
 - Subject: imperative, at most 72 characters, says **what changed for a reader**.
 - Body (when the why is not obvious): the finding, decision or trade-off. Wrap at 72.
 - **One coherent change per commit that builds and passes tests.** A regression test ships in

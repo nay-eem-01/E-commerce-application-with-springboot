@@ -39,10 +39,11 @@ class OrderServiceTest {
 	private final OrderRepository orders = mock(OrderRepository.class);
 	private final PaymentApi payments = mock(PaymentApi.class);
 	private final CatalogApi catalog = mock(CatalogApi.class);
+	private final org.springframework.context.ApplicationEventPublisher events = mock(org.springframework.context.ApplicationEventPublisher.class);
 	private final DeliveryProperties delivery = new DeliveryProperties(new BigDecimal("70"), new BigDecimal("130"),
 			new BigDecimal("3000"), List.of("Dhaka"), List.of("Dhaka"), "1 to 2 days", "2 to 4 days");
 	private final OrderService service = new OrderService(orders, mock(OrderStatusHistoryRepository.class), payments,
-			new DeliveryFeeCalculator(delivery), catalog, new InMemoryRateLimiter(), Clock.systemUTC());
+			new DeliveryFeeCalculator(delivery), catalog, new InMemoryRateLimiter(), events, Clock.systemUTC());
 
 	private Order order(OrderStatus status, PaymentMethod method) {
 		Order o = new Order();
@@ -151,6 +152,31 @@ class OrderServiceTest {
 		service.cancelUnpaid(1L, "PAY-X");
 		assertThat(packed.getStatus()).isEqualTo(OrderStatus.PACKED);
 		verify(catalog, never()).release(anyList());
+	}
+
+	@Test
+	void shippingDeliveringAndCancellingNotifyButPackingDoesNot() {
+		Order o = order(OrderStatus.PLACED, PaymentMethod.COD);
+		when(orders.findByOrderNumber("SS-ABCDEFGH")).thenReturn(Optional.of(o));
+		service.adminApply("SS-ABCDEFGH", OrderAction.PACK, null, 1L);
+		verify(events, never()).publishEvent(any(com.ecommerce.common.event.OrderNotificationEvent.class));
+
+		service.adminApply("SS-ABCDEFGH", OrderAction.SHIP, null, 1L);
+		var captor = org.mockito.ArgumentCaptor.forClass(com.ecommerce.common.event.OrderNotificationEvent.class);
+		verify(events).publishEvent(captor.capture());
+		assertThat(captor.getValue().type()).isEqualTo(com.ecommerce.common.event.OrderNotificationEvent.Type.SHIPPED);
+		assertThat(captor.getValue().order().orderNumber()).isEqualTo("SS-ABCDEFGH");
+	}
+
+	@Test
+	void onlyOnlinePaymentsGetAPaymentReceivedEmail() {
+		when(orders.findById(1L)).thenReturn(Optional.of(order(OrderStatus.DELIVERED, PaymentMethod.COD)));
+		service.announcePayment(1L);
+		verify(events, never()).publishEvent(any(com.ecommerce.common.event.OrderNotificationEvent.class));
+
+		when(orders.findById(1L)).thenReturn(Optional.of(order(OrderStatus.PLACED, PaymentMethod.BKASH)));
+		service.announcePayment(1L);
+		verify(events).publishEvent(any(com.ecommerce.common.event.OrderNotificationEvent.class));
 	}
 
 	/** Regression: a null search reached PostgreSQL as bytea inside upper() and the admin list 500'd. */
