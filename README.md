@@ -4,7 +4,7 @@ Backend for an online shop selling anime figures, cosplay costumes, water bottle
 in Bangladesh. Guest checkout with cash on delivery, phone-code sign-in, product pages built
 around a 360 viewer, order tracking and verified-buyer reviews.
 
-**Stack:** Java 21 · Spring Boot 3.5 · PostgreSQL 15+ · Flyway · Spring Security + JWT ·
+**Stack:** Java 21 · Spring Boot 3.5 · PostgreSQL 15+ (16 and 17 fine) · Flyway · Spring Security + JWT ·
 springdoc-openapi · Maven multi-module (modular monolith)
 
 ## Modules
@@ -15,7 +15,8 @@ springdoc-openapi · Maven multi-module (modular monolith)
 | `ecommerce-user` | Phone OTP and password sign-in, sessions, refresh tokens, profile, address book, admin users |
 | `ecommerce-catalog` | Categories, products, options, specs, photos and 360 frames, search, inventory |
 | `ecommerce-cart` | Signed-in cart and wishlist, guest-cart merge |
-| `ecommerce-order` | Delivery options, quote, checkout, orders, state machine, payments, guest tracking |
+| `ecommerce-payment` | Payments behind a provider interface: COD, bKash, SSLCommerz (cards, banks, wallets); vendor chosen by property |
+| `ecommerce-order` | Delivery options, quote, checkout, orders, state machine, guest tracking |
 | `ecommerce-review` | Reviews from buyers who received the product |
 | `ecommerce-api` | Bootstrap, security, configuration, Flyway migrations (the deployable) |
 

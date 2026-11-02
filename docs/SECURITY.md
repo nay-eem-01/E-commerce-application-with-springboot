@@ -55,7 +55,13 @@ the previous code is in `docs/PLAN.md` §3 (findings A1 to A18).
 | Client-supplied prices or totals | Request DTOs have no price fields; server prices every line from the catalog; DB CHECKs `total = subtotal + delivery_fee`, `line_total = unit_price × quantity` |
 | Overselling under concurrency | Conditional `UPDATE ... WHERE stock >= q` inside the order transaction; `CHECK (stock >= 0)`; product-id lock order |
 | Double orders (retries, double taps) | Required `Idempotency-Key`; same key returns the same order, a key reused by someone else is 409 |
-| Fake "paid" status | Payments created server-side; only COD enabled; online gateways must confirm server-to-server (interface contract) |
+| Fake "paid" status | A payment is PAID only from the vendor's server answer (bKash execute/status, SSLCommerz validation/query) whose amount, currency and reference match ours; callback/IPN parameters only identify the payment |
+| Replayed or duplicated callbacks | Idempotent: a PAID payment ignores further callbacks; `@Version` on payments for a callback racing an IPN |
+| A callback naming another vendor's payment | Payment found by reference/vendor id **and** the provider in the URL must match the payment's provider (404 otherwise) |
+| Open redirect through the payment return | The shopper is always sent to the configured `PAYMENT_RETURN_URL`, never a URL from the request |
+| Money arriving after cancellation/expiry | Detected on verification and refunded automatically |
+| Vendor credentials | Environment only, no defaults; never logged; startup fails when an enabled method's vendor lacks them |
+| The development fake provider in production | It reports itself unconfigured outside development/test, so routing refuses to start if a route points at it |
 | Rewriting history | Orders snapshot prices and addresses; `order_status_history` UPDATE blocked by a DB trigger |
 | Illegal status jumps | `OrderStateMachine`; staff send actions; illegal → 409 |
 
@@ -92,5 +98,5 @@ the previous code is in `docs/PLAN.md` §3 (findings A1 to A18).
 | S4 | No dependency or secret scanning in CI yet | Add CI with `mvn verify`, OWASP dependency-check or Dependabot, gitleaks |
 | S5 | Integration tests run against a local PostgreSQL by hand (`scripts/smoke_test.py`) | Testcontainers in CI (roadmap Phase 3) |
 | S6 | Image upload not built | When built: Tika byte-sniffing, random object keys, size limits, private bucket + CDN |
-| S7 | Online payments not built | Each gateway: server-to-server verification, signed webhooks, idempotent callbacks, amount check |
+| S7 | Online payments are built but untested against live vendor sandboxes (no credentials yet) | Run bKash and SSLCommerz sandbox flows before enabling; add SSLCommerz IPN hash (`verify_sign`) check as defence in depth; rate-limit callbacks at the proxy |
 | S8 | Account deletion / data export not built | Needed for privacy requests; design with order snapshots (anonymize, keep financial record) |

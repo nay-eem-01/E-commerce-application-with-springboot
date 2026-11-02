@@ -88,13 +88,24 @@ Guests keep the cart in the browser. After sign-in, send it once to `/api/cart/m
 | POST | `/api/checkout/quote` | public | `{items, district?}` → lines, subtotal, deliveryFee, total, depositTotal, amountToFreeDelivery, allInStock |
 | POST | `/api/orders` | optional | header **`Idempotency-Key`** (new UUID per checkout attempt; reuse it on retry). Body `{items, fullName, phone, email?, district, area, addressLine, note?, paymentMethod, saveAddress}` → `OrderResponse` (201) |
 | POST | `/api/orders/track` | public | `{orderNumber, phone}` → status, items, total, timeline (no address) |
+| POST | `/api/orders/pay` | public | `{orderNumber, phone}` → `PaymentAction` for an unpaid online order (retry) |
 | GET | `/api/orders/me` | auth | my orders (page) |
 | GET | `/api/orders/me/{orderNumber}` | auth | full order + timeline |
 | POST | `/api/orders/me/{orderNumber}/cancel` | auth | only while `PLACED` |
 
 Order statuses: `PLACED → PACKED → SHIPPED → DELIVERED`, or `CANCELLED`, `RETURNED`.
 `OrderResponse.amountDueOnDelivery` is what to tell a COD shopper to have ready.
-`paymentAction` is `{type: "NONE"}` for COD; a future online method returns `{type: "REDIRECT", url}`.
+`paymentStatus`: `PENDING, PAID, FAILED, CANCELLED, EXPIRED, REFUNDED`.
+`paymentAction`: `{type: "NONE"}` for COD; `{type: "REDIRECT", url}` for an online method
+(send the browser to `url`); `null` if the provider was unreachable (show "Try paying again").
+
+### Payment callbacks (called by providers, not by the storefront)
+| Method | Path | |
+|---|---|---|
+| GET/POST | `/api/payments/{provider}/callback` | Browser return. Verified with the provider, then **303** to `PAYMENT_RETURN_URL?order=SS-...&payment=PAID|FAILED|CANCELLED|PENDING|UNKNOWN` |
+| POST | `/api/payments/{provider}/ipn` | Server-to-server notification, verified the same way |
+
+`provider` is `bkash`, `sslcommerz` or (development) `fake`.
 
 ### Admin (auth + privilege)
 | Method | Path | Privilege |
@@ -120,6 +131,14 @@ total in the browser.
 **Checkout:** generate `Idempotency-Key = crypto.randomUUID()` when the checkout page opens.
 `POST /api/orders` with it; on a network error retry with the **same** key. On 409
 `OUT_OF_STOCK`, re-quote and show which lines changed (`payload.productIds`).
+Offer only `deliveryOptions.paymentMethods`. For an online method, redirect to
+`paymentAction.url`; the shopper comes back to the result page with `order` and `payment` in
+the query. The result page then loads the order (members: `/api/orders/me/{n}`; guests:
+`/api/orders/track`) because the query string is only a hint. On `FAILED`/`CANCELLED`, offer
+`POST /api/orders/pay`. Unpaid online orders are cancelled after 30 minutes.
+
+**Local development:** online methods use the `fake` provider: its "payment page" is the
+callback URL with `outcome=success`; change it to `fail` or `cancel` to test those paths.
 
 **Sign-in:** `/otp/request` → show the code input → `/otp/verify` → store tokens →
 `POST /api/cart/merge` with the browser cart → clear the browser cart.

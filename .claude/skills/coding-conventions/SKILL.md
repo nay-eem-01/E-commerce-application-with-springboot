@@ -22,6 +22,7 @@ themselves with a static `from(...)`.
 | `ecommerce-user` | auth, sessions, users, addresses |
 | `ecommerce-catalog` | categories, products, inventory; public surface `catalog.api.CatalogApi` |
 | `ecommerce-cart` | cart, wishlist |
+| `ecommerce-payment` | payments, `spi.PaymentProvider` adapters (`provider/<vendor>`), routing by property; public surface `payment.api.PaymentApi` |
 | `ecommerce-order` | checkout, orders, payments; public surface `order.api.PurchaseVerifier` |
 | `ecommerce-review` | reviews |
 | `ecommerce-api` | bootstrap, `SecurityConfig`, properties, Flyway migrations |

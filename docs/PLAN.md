@@ -29,7 +29,7 @@ price**, to **whom**, and **where is it now**.
 | 1 | Structure | **Multi-module Maven, modular monolith** (same as delivery_app) | One deployable, but the compiler stops `cart` reaching into `order`. Gives boundary enforcement, not runtime scaling. A module can later become a service without rewriting callers, because modules already talk through small interfaces and events (§4). |
 | 2 | Module ownership | **Per domain; each module owns its tables** | No shared persistence module. Cross-module links are plain id columns in Java (no `@ManyToOne` across modules) but real foreign keys in PostgreSQL. |
 | 3 | Web stack | **Servlet MVC + JPA** | Checkout is one transaction: stock + order + items + history + payment + listeners. Straightforward with JPA; painful in reactive. |
-| 4 | Database | **PostgreSQL 15+** (was MySQL) | `NULLS NOT DISTINCT` unique constraints, partial indexes, `timestamptz`, CHECK constraints, triggers. Same engine as delivery_app and AgroTrends. |
+| 4 | Database | **PostgreSQL 15+** (was MySQL); tested on 16, PostgreSQL 17 (used by the other projects) works unchanged | `NULLS NOT DISTINCT` unique constraints (15+), partial indexes, `timestamptz`, CHECK constraints, triggers. Nothing version-specific beyond 15. Same engine as delivery_app and AgroTrends. |
 | 5 | Schema | **Flyway + `ddl-auto=validate`** | `update` cannot express `NUMERIC(12,2)`, CHECKs or seed rows, and silently drifts between environments. |
 | 6 | Shopper sign-in | **Phone + SMS code (OTP), no password** | Matches the design and the market: no password to forget, phone is needed for delivery anyway. First sign-in creates the account. Staff use email + password. |
 | 7 | Tokens | **15-min access JWT bound to a server-side session + opaque single-use refresh token (30 days, rotated)** | Sign-out, bans and password changes take effect immediately. A reused refresh token revokes the whole session (theft detection). From AgroTrends. |
@@ -37,12 +37,14 @@ price**, to **whom**, and **where is it now**.
 | 9 | Prices | **Always computed on the server from the catalog** | Requests carry ids and quantities only. Orders snapshot names and prices so later edits never rewrite history. |
 | 10 | Stock | **Atomic conditional UPDATE inside the order transaction** | `UPDATE ... SET stock = stock - q WHERE stock >= q` cannot oversell under concurrency. Rows are touched in product-id order to avoid deadlocks. |
 | 11 | Duplicate orders | **`Idempotency-Key` header required on `POST /api/orders`** | A double tap or a retried request returns the same order instead of charging twice. |
-| 12 | Payments | **COD only, behind a `PaymentGateway` interface** | COD is roughly 75 to 95% of Bangladeshi e-commerce payments. bKash/Nagad/card each become one class plus a config flag; checkout code does not change. |
+| 12 | Payments | **`ecommerce-payment` module with a `PaymentProvider` SPI; the vendor per method is a property** | COD is roughly 75 to 95% of Bangladeshi e-commerce payments, so it stays the default. bKash (direct) and SSLCommerz (cards, internet banking, and bKash/Nagad as an aggregator) are built and switched off. `PAYMENT_ENABLED_METHODS` turns a method on; `PAYMENT_ROUTE_<METHOD>` picks its vendor. A new vendor is one class. Startup fails if an enabled method points at a missing, unsupported or unconfigured provider. |
 | 13 | SMS | **`SmsSender` interface; console sender in development only** | The OTP flow works end to end today. A real provider (sender-ID approval takes days) is one class. The console sender refuses to run outside development. |
 | 14 | Images | **URLs (CDN/object storage) validated as http(s)** | Upload with byte-sniffing (Tika) and S3 pre-signed URLs is a roadmap step, ported from delivery_app's plan. |
 | 15 | Envelope | **`Response {status, message, payload, success, correlationId?}`** | Same envelope as delivery_app/AgroTrends. Lists return a stable `PageResponse` record instead of Spring's `PageImpl` JSON. |
 | 16 | Admin bootstrap | **`INITIAL_ADMIN_EMAIL` env; password generated or from env; must change on first sign-in** | The old code seeded `admin/adminPass`. |
-| 17 | Git | **Conventional commits, no attribution, step branches** | From delivery_app/AgroTrends; see `docs/GIT_WORKFLOW.md`. |
+| 17 | Git | **Conventional commits, author nay-eem-01, no attribution, step branches** | From delivery_app/AgroTrends; see `docs/GIT_WORKFLOW.md`. |
+| 18 | Online payment trust | **PAID only from the vendor's server answer, with matching amount, currency and reference** | Browser redirect parameters can be forged. Callbacks and IPNs trigger a server-to-server check (bKash execute/status, SSLCommerz validation/query). Money that arrives after an order was given up is refunded automatically. |
+| 19 | Unpaid online orders | **Stock reserved at checkout; released when the payment expires (30 min) or the order is cancelled** | Prevents overselling while the shopper is on the payment page. Unpaid online orders cannot be packed. |
 
 ---
 
@@ -86,21 +88,25 @@ ecommerce-app (parent pom)
 ├── ecommerce-catalog  categories, products, options, facts, box items, media (photos + 360 frames),
 │                      search, inventory. Public surface: CatalogApi
 ├── ecommerce-cart     signed-in cart and wishlist (uses CatalogApi)
-├── ecommerce-order    delivery options, quote, checkout, orders, state machine, payments, tracking.
-│                      Public surface: PurchaseVerifier
+├── ecommerce-payment  payments, provider SPI (bkash, sslcommerz, fake), routing by property, callbacks/IPN,
+│                      expiry job. Public surface: PaymentApi
+├── ecommerce-order    delivery options, quote, checkout, orders, state machine, tracking (uses CatalogApi,
+│                      PaymentApi). Public surface: PurchaseVerifier
 ├── ecommerce-review   verified-buyer reviews (uses CatalogApi, PurchaseVerifier)
 └── ecommerce-api      bootstrap, security chain, config, Flyway migrations. Only deployable.
 ```
 
-**Dependency direction:** `common ← user, catalog ← cart, order ← review ← api`.
+**Dependency direction:** `common ← user, catalog, payment ← cart, order ← review ← api`.
 
 **Boundary rules**
 - A module never imports another module's entities or repositories.
 - Cross-module reads go through a small public interface in an `api` package
-  (`CatalogApi`, `PurchaseVerifier`).
+  (`CatalogApi`, `PaymentApi`, `PurchaseVerifier`).
 - Cross-module reactions go through events in common (`OrderPlacedEvent`): cart removes the
   bought lines and user saves the first address. Listeners run synchronously in the order's
-  transaction, so a listener failure rolls the order back.
+  transaction, so a listener failure rolls the order back. Payment events
+  (`PaymentSucceededEvent`, `PaymentExpiredEvent`) work the same way: an expired payment
+  cancels its order and restocks it.
 - The caller's identity reaches every module through `CurrentUser` / `AuthenticatedUser`
   (common), implemented by the user module's principal. No module depends on `user`.
 
@@ -108,11 +114,12 @@ ecommerce-app (parent pom)
 
 | When | Change | Code touched |
 |---|---|---|
-| A second app instance | Rate limits move to Redis | One new `RateLimiter` implementation |
+| A second app instance | Rate limits move to Redis; the payment expiry job gets a lock (ShedLock); the bKash token cache becomes shared | One new `RateLimiter` implementation; one annotation; one cache |
 | Auth lookups show up in profiles | Cache session + user lookups (short TTL, evicted on revoke) | `JwtAuthenticationFilter` only |
 | Read traffic on the catalog | HTTP caching / Redis cache on `ProductQueryService`; read replica for `GET` | Catalog service only |
 | Search needs ranking or typo tolerance | Generated `tsvector` column + GIN index, later a search engine | `ProductSpecifications.search` only |
 | Order volume needs async work (SMS, email, analytics) | Publish `OrderPlacedEvent` to a broker (outbox table) | Event publisher; listeners stay |
+| A new payment vendor (Nagad direct, aamarPay, a bank) | One `PaymentProvider` implementation + `PAYMENT_ROUTE_<METHOD>` | That class only |
 | A team owns one domain | Extract a module to a service; its `api` interface becomes an HTTP/gRPC client | That module + its client |
 
 Nothing in this list requires changing controllers or the frontend contract.
@@ -138,7 +145,8 @@ Nothing in this list requires changing controllers or the frontend contract.
 
 ## 6. Out of scope for now (goes in the roadmap, not in code)
 
-Real SMS provider · bKash/Nagad/card gateways · image upload · email receipts · promo codes ·
+Real SMS provider · live payment credentials and sandbox certification · Nagad direct
+integration (SSLCommerz covers Nagad today) · image upload · email receipts · promo codes ·
 gacha mechanic · admin web UI · courier integration (e.g. a delivery_app client) ·
 analytics · multi-currency · product variants with more than one option group.
 
@@ -148,7 +156,8 @@ analytics · multi-currency · product variants with more than one option group.
 
 | # | Question | Needed by |
 |---|---|---|
-| 1 | Pre-order deposits: with COD only, deposits cannot be collected online. Today the whole amount is due on delivery and `depositTotal` is informational. Should pre-orders require bKash once it exists? | bKash gateway |
+| 1 | Pre-order deposits: online payments currently charge the full order total; COD collects everything on delivery and `depositTotal` is informational. Should a pre-order charge only its deposit online? | Activating online payments |
+| 5 | Payment vendors: direct bKash merchant account, SSLCommerz store, or both? (Both are built; routing decides.) | Activating online payments |
 | 2 | Returns: who inspects, and is stock restored automatically for unopened returns? Today staff restock manually. | Returns flow |
 | 3 | Brand name and SMS sender ID ("Senpai Supply" is a placeholder in SMS text). | SMS provider |
 | 4 | Delivery partner: own riders or a courier (Steadfast/Pathao/delivery_app)? Affects SHIPPED → DELIVERED updates. | Courier integration |

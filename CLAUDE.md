@@ -2,7 +2,8 @@
 
 Anime merchandise shop for Bangladesh: figures, costumes, bottles, bags. Guest checkout with
 cash on delivery, phone-code sign-in, a product page built around a 360 viewer. Spring Boot
-3.5 / Java 21, PostgreSQL 15+, modular monolith (seven Maven modules). The storefront design
+3.5 / Java 21, PostgreSQL 15+ (16/17 fine), modular monolith (eight Maven modules). Online
+payments (bKash, SSLCommerz) are built behind a provider interface and switched on by config. The storefront design
 is concept C ("night market"); the frontend lives in its own repository.
 
 ## Start of every session
@@ -41,5 +42,7 @@ Swagger UI: `/swagger-ui.html` (off in production). Never read, print or commit 
 - A module never touches another module's entities or repositories; use its `api` interface or an event.
 - Return records, not entities. Messages come from `ErrorCode`; no exception detail in responses.
 - Order transitions only through `OrderStateMachine`; schema changes only through a new Flyway file.
-- Small conventional commits, no attribution; every fix ships with a regression test; update
+- A payment is PAID only from the provider's server-side answer; vendors are chosen by
+  `app.payment.routes.*`, never by code. New vendor = one `PaymentProvider` class.
+- Small conventional commits authored as nay-eem-01, no attribution; every fix ships with a regression test; update
   `docs/ROADMAP.md` and `docs/DEV_LOG.md` in the same PR.
