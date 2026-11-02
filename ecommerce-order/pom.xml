@@ -23,6 +23,10 @@
 			<groupId>com.ecommerce</groupId>
 			<artifactId>ecommerce-catalog</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.ecommerce</groupId>
+			<artifactId>ecommerce-payment</artifactId>
+		</dependency>
 	</dependencies>
 
 </project>

@@ -7,7 +7,9 @@ import com.ecommerce.common.security.CurrentUser;
 import com.ecommerce.common.web.ClientIp;
 import com.ecommerce.order.dto.request.PlaceOrderRequest;
 import com.ecommerce.order.dto.request.QuoteRequest;
+import com.ecommerce.order.dto.request.RetryPaymentRequest;
 import com.ecommerce.order.dto.request.TrackOrderRequest;
+import com.ecommerce.order.service.CheckoutFacade;
 import com.ecommerce.order.service.CheckoutService;
 import com.ecommerce.order.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CheckoutController {
 
 	private final CheckoutService checkoutService;
+	private final CheckoutFacade checkoutFacade;
 	private final OrderService orderService;
 	private final CurrentUser currentUser;
 
@@ -46,14 +49,20 @@ public class CheckoutController {
 		return Response.ok("Quote ready.", checkoutService.quote(request));
 	}
 
-	@Operation(summary = "Place an order as a guest or signed in. Send a fresh Idempotency-Key per checkout; a retry with the same key returns the same order.")
+	@Operation(summary = "Place an order as a guest or signed in. Send a fresh Idempotency-Key per checkout; a retry with the same key returns the same order. For an online method, paymentAction.url is the provider page to redirect to.")
 	@PostMapping("/api/orders")
 	public ResponseEntity<Response> place(
 			@Parameter(description = "Random 16-64 characters (a UUID is fine), new for each checkout attempt")
 			@RequestHeader(name = AppConstants.IDEMPOTENCY_KEY_HEADER, required = false) String idempotencyKey,
 			@Valid @RequestBody PlaceOrderRequest request, HttpServletRequest http) {
 		return Response.created("Order placed.",
-				checkoutService.place(request, idempotencyKey, currentUser.idOrNull(), ClientIp.of(http)));
+				checkoutFacade.placeAndPay(request, idempotencyKey, currentUser.idOrNull(), ClientIp.of(http)));
+	}
+
+	@Operation(summary = "Try paying an unpaid online order again (order number + the phone it was placed with). Returns where to redirect.")
+	@PostMapping("/api/orders/pay")
+	public ResponseEntity<Response> retryPayment(@Valid @RequestBody RetryPaymentRequest request, HttpServletRequest http) {
+		return Response.ok("Payment started.", orderService.retryPayment(request.getOrderNumber(), request.getPhone(), ClientIp.of(http)));
 	}
 
 	@Operation(summary = "Track an order with its number and the mobile number used to place it. No address or contact details are returned.")

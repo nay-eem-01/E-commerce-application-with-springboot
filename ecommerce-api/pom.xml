@@ -29,6 +29,10 @@
 		</dependency>
 		<dependency>
 			<groupId>com.ecommerce</groupId>
+			<artifactId>ecommerce-payment</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.ecommerce</groupId>
 			<artifactId>ecommerce-order</artifactId>
 		</dependency>
 		<dependency>

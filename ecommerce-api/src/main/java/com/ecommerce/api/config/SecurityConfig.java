@@ -39,13 +39,16 @@ public class SecurityConfig {
 
 	private static final String[] PUBLIC_GET = {
 			"/api/categories", "/api/products", "/api/products/**", "/api/checkout/delivery-options",
+			"/api/payments/*/callback",
 			"/actuator/health", "/actuator/health/**", "/actuator/info",
 			"/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
 	};
 
 	private static final String[] PUBLIC_POST = {
 			"/api/auth/otp/request", "/api/auth/otp/verify", "/api/auth/sign-in", "/api/auth/refresh-token",
-			"/api/checkout/quote", "/api/orders", "/api/orders/track"
+			"/api/checkout/quote", "/api/orders", "/api/orders/track", "/api/orders/pay",
+			// Payment providers post here without our token; every call is verified with the provider.
+			"/api/payments/*/callback", "/api/payments/*/ipn"
 	};
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;

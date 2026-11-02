@@ -36,6 +36,21 @@ def call(method, path, body=None, token=None, headers=None):
         return e.code, json.loads(raw) if raw else None
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+def get_no_redirect(url):
+    """GET without following redirects; returns (status, Location)."""
+    opener = urllib.request.build_opener(_NoRedirect)
+    try:
+        r = opener.open(url)
+        return r.status, r.headers.get("Location")
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers.get("Location")
+
+
 def check(name, cond, info=""):
     print(("PASS " if cond else "FAIL ") + name + ("" if cond else f"  -> {info}"))
     if not cond:
@@ -71,7 +86,7 @@ check("unknown product 404", s == 404, s)
 s, r = call("GET", "/api/products/ronin-swordsman/related")
 check("related", s == 200 and len(r["payload"]) == 4, r)
 s, r = call("GET", "/api/checkout/delivery-options")
-check("delivery options", s == 200 and r["payload"]["paymentMethods"] == ["COD"], r)
+check("delivery options (dev: COD + fake online)", s == 200 and r["payload"]["paymentMethods"] == ["COD", "BKASH", "CARD"], r)
 
 # --- quote ---
 s, r = call("GET", "/api/products/silver-wig"); wig = r["payload"]
@@ -98,8 +113,38 @@ s, r2 = call("POST", "/api/orders", order_body, headers={"Idempotency-Key": key}
 check("retry same key returns same order", s == 201 and r2["payload"]["orderNumber"] == guest_no, r2)
 s, r = call("GET", "/api/products/silver-wig")
 check("stock decremented once (3 -> 2)", r["payload"]["stockLeft"] == 2, r["payload"]["stockLeft"])
-s, r = call("POST", "/api/orders", dict(order_body, paymentMethod="BKASH"), headers={"Idempotency-Key": str(uuid.uuid4())})
+s, r = call("POST", "/api/orders", dict(order_body, paymentMethod="NAGAD"), headers={"Idempotency-Key": str(uuid.uuid4())})
 check("disabled payment method 400", s == 400, (s, r))
+
+# --- online payment through the fake provider (development only) ---
+s, r = call("GET", "/api/products/mecha-shaker"); shaker = r["payload"]
+online_body = dict(order_body, items=[{"productId": shaker["id"], "quantity": 1}], paymentMethod="BKASH")
+s, r = call("POST", "/api/orders", online_body, headers={"Idempotency-Key": str(uuid.uuid4())})
+pay = r["payload"]["paymentAction"] if s == 201 else None
+check("online order returns a redirect", s == 201 and pay["type"] == "REDIRECT" and "/api/payments/fake/callback" in pay["url"]
+      and r["payload"]["paymentStatus"] == "PENDING" and r["payload"]["amountDueOnDelivery"] == 0, r)
+online_no = r["payload"]["orderNumber"]
+st, loc = get_no_redirect(pay["url"])
+check("callback verifies and sends the shopper to the storefront", st == 303 and loc.startswith("http://localhost:5173/checkout/result")
+      and f"order={online_no}" in loc and "payment=PAID" in loc, (st, loc))
+st2, loc2 = get_no_redirect(pay["url"])
+check("repeated callback is idempotent", st2 == 303 and "payment=PAID" in loc2, (st2, loc2))
+st, loc = get_no_redirect(BASE + "/api/payments/fake/callback?ref=PAY-NOPE&outcome=success")
+check("unknown payment reference", st == 303 and "payment=UNKNOWN" in loc, (st, loc))
+st, loc = get_no_redirect(BASE + "/api/payments/paypal/callback?x=1")
+check("unknown provider", st == 303 and "payment=UNKNOWN" in loc, (st, loc))
+
+s, r = call("POST", "/api/orders", dict(online_body, paymentMethod="CARD"), headers={"Idempotency-Key": str(uuid.uuid4())})
+card_no = r["payload"]["orderNumber"]
+st, loc = get_no_redirect(r["payload"]["paymentAction"]["url"].replace("outcome=success", "outcome=fail"))
+check("failed card payment", st == 303 and "payment=FAILED" in loc, (st, loc))
+s, r = call("POST", "/api/orders/pay", {"orderNumber": card_no, "phone": "01811111111"})
+check("retry with the wrong phone 404", s == 404, s)
+s, r = call("POST", "/api/orders/pay", {"orderNumber": card_no, "phone": "01712345678"})
+check("retry payment gives a new redirect", s == 200 and r["payload"]["type"] == "REDIRECT", r)
+retry_url = r["payload"]["url"]
+s, r = call("POST", "/api/orders/pay", {"orderNumber": online_no, "phone": "01712345678"})
+check("a paid order cannot be paid again", s == 409, s)
 s, r = call("POST", "/api/orders", dict(order_body, items=[{"productId": wig["id"], "quantity": 5}]), headers={"Idempotency-Key": str(uuid.uuid4())})
 check("more than stock is 409", s == 409, (s, r))
 s, r = call("POST", "/api/orders/track", {"orderNumber": guest_no, "phone": "01712345678"})
@@ -199,7 +244,14 @@ check("old admin token revoked", s == 401, s)
 s, r = call("POST", "/api/auth/sign-in", {"email": "admin@senpai.local", "password": "Senpai-Admin-2026!"})
 adm = r["payload"]["accessToken"]
 s, r = call("GET", "/api/admin/orders?status=PLACED", token=adm)
-check("admin order list", s == 200 and r["payload"]["totalElements"] == 2, r)
+check("admin order list", s == 200 and r["payload"]["totalElements"] >= 2, r)
+s, r = call("PATCH", f"/api/admin/orders/{card_no}/status", {"action": "PACK"}, token=adm)
+check("unpaid online order cannot be packed", s == 409, s)
+st, loc = get_no_redirect(retry_url)
+s, r = call("PATCH", f"/api/admin/orders/{card_no}/status", {"action": "PACK"}, token=adm)
+check("after a successful retry it can be packed", "payment=PAID" in loc and s == 200 and r["payload"]["status"] == "PACKED", (loc, s, r))
+s, r = call("PATCH", f"/api/admin/orders/{online_no}/status", {"action": "CANCEL"}, token=adm)
+check("cancelling a paid online order refunds it", s == 200 and r["payload"]["paymentStatus"] == "REFUNDED", r)
 s, r = call("PATCH", f"/api/admin/orders/{member_no}/status", {"action": "DELIVER"}, token=adm)
 check("illegal transition 409", s == 409, s)
 for a in ("PACK", "SHIP", "DELIVER"):

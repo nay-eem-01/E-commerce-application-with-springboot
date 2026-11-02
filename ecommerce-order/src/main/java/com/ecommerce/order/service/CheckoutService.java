@@ -11,7 +11,6 @@ import com.ecommerce.common.money.Money;
 import com.ecommerce.common.phone.PhoneNumbers;
 import com.ecommerce.common.ratelimit.RateLimiter;
 import com.ecommerce.order.config.DeliveryProperties;
-import com.ecommerce.order.config.PaymentProperties;
 import com.ecommerce.order.dto.request.CheckoutLine;
 import com.ecommerce.order.dto.request.PlaceOrderRequest;
 import com.ecommerce.order.dto.request.QuoteRequest;
@@ -21,14 +20,13 @@ import com.ecommerce.order.dto.response.QuoteResponse;
 import com.ecommerce.order.entity.Order;
 import com.ecommerce.order.entity.OrderItem;
 import com.ecommerce.order.entity.OrderStatusHistory;
-import com.ecommerce.order.entity.Payment;
 import com.ecommerce.order.enums.OrderStatus;
-import com.ecommerce.order.enums.PaymentMethod;
-import com.ecommerce.order.enums.PaymentStatus;
-import com.ecommerce.order.payment.PaymentGateway;
+import com.ecommerce.payment.api.PaymentMethod;
+import com.ecommerce.payment.api.PaymentApi;
+import com.ecommerce.payment.api.PaymentAction;
+import com.ecommerce.payment.api.PaymentAction;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.repository.OrderStatusHistoryRepository;
-import com.ecommerce.order.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -62,12 +60,10 @@ public class CheckoutService {
 	private final CatalogApi catalogApi;
 	private final DeliveryFeeCalculator feeCalculator;
 	private final DeliveryProperties deliveryProperties;
-	private final PaymentProperties paymentProperties;
-	private final List<PaymentGateway> gateways;
+	private final PaymentApi paymentApi;
 	private final OrderNumberGenerator orderNumberGenerator;
 	private final OrderRepository orderRepository;
 	private final OrderStatusHistoryRepository historyRepository;
-	private final PaymentRepository paymentRepository;
 	private final ApplicationEventPublisher events;
 	private final RateLimiter rateLimiter;
 	private final Clock clock;
@@ -78,7 +74,7 @@ public class CheckoutService {
 				Money.of(deliveryProperties.insideFee()), Money.of(deliveryProperties.outsideFee()),
 				Money.of(deliveryProperties.freeThreshold()),
 				deliveryProperties.insideEstimate(), deliveryProperties.outsideEstimate(),
-				paymentProperties.enabledMethods().stream().sorted().toList());
+				paymentApi.availableMethods());
 	}
 
 	@Transactional(readOnly = true)
@@ -113,11 +109,9 @@ public class CheckoutService {
 
 		String district = feeCalculator.requireKnown(request.getDistrict());
 		PaymentMethod method = request.getPaymentMethod();
-		if (!paymentProperties.enabledMethods().contains(method)) {
+		if (!paymentApi.isAvailable(method)) {
 			throw ResponseException.badRequest(ErrorCode.PAYMENT_METHOD_UNAVAILABLE);
 		}
-		PaymentGateway gateway = gateways.stream().filter(g -> g.method() == method).findFirst()
-				.orElseThrow(() -> ResponseException.badRequest(ErrorCode.PAYMENT_METHOD_UNAVAILABLE));
 
 		List<LineRequest> lines = merge(request.getItems());
 		QuoteResponse quote = buildQuote(catalogApi.price(lines), district);
@@ -161,12 +155,11 @@ public class CheckoutService {
 		orderRepository.save(order);
 		historyRepository.save(history(order, null, OrderStatus.PLACED, null, userId == null ? "GUEST" : String.valueOf(userId), now));
 
-		Payment payment = new Payment();
-		payment.setOrderId(order.getId());
-		payment.setMethod(method);
-		payment.setStatus(PaymentStatus.PENDING);
-		payment.setAmount(order.getTotal());
-		paymentRepository.save(payment);
+		// COD is recorded now; an online payment is started by CheckoutFacade after this
+		// transaction commits, so no vendor HTTP call holds the order transaction open.
+		if (!method.isOnline()) {
+			paymentApi.createCashOnDelivery(order.getId(), order.getOrderNumber(), order.getTotal());
+		}
 
 		events.publishEvent(new OrderPlacedEvent(order.getId(), order.getOrderNumber(), userId,
 				lines.stream().map(l -> new OrderPlacedEvent.Line(l.productId(), l.optionId(), l.quantity())).toList(),
@@ -175,7 +168,7 @@ public class CheckoutService {
 
 		log.info("Order {} placed: {} lines, total {} {}, {} for {}", order.getOrderNumber(), order.getItems().size(),
 				order.getTotal(), method, userId == null ? "guest" : "user " + userId, LogMasks.maskPhone(phone));
-		return view(order, gateway.start(order, payment));
+		return view(order, method.isOnline() ? null : PaymentAction.none());
 	}
 
 	/** Same product + option twice in one request becomes one line. */
@@ -220,11 +213,9 @@ public class CheckoutService {
 				feeCalculator.estimate(district), allInStock);
 	}
 
-	private OrderResponse view(Order order, PaymentGateway.PaymentAction action) {
-		PaymentStatus status = paymentRepository.findFirstByOrderIdOrderByIdDesc(order.getId())
-				.map(Payment::getStatus).orElse(PaymentStatus.PENDING);
-		return OrderResponse.from(order, historyRepository.findByOrderIdOrderByIdAsc(order.getId()), status,
-				feeCalculator.estimate(order.getDistrict()), action);
+	private OrderResponse view(Order order, PaymentAction action) {
+		return OrderResponse.from(order, historyRepository.findByOrderIdOrderByIdAsc(order.getId()),
+				paymentApi.statusOf(order.getId()), feeCalculator.estimate(order.getDistrict()), action);
 	}
 
 	private String uniqueOrderNumber() {
