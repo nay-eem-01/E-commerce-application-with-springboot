@@ -30,6 +30,7 @@
 		<module>ecommerce-cart</module>
 		<module>ecommerce-order</module>
 		<module>ecommerce-review</module>
+		<module>ecommerce-api</module>
 	</modules>
 
 	<properties>
