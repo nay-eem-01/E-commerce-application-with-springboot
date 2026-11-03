@@ -26,7 +26,9 @@ public record ProductSummaryResponse(
 		/** Listed in the last 30 days. */
 		boolean newArrival,
 		/** Colour options, for the dots on a card and quick add; empty when options are not colours. */
-		java.util.List<Swatch> swatches
+		java.util.List<Swatch> swatches,
+		/** A set of other products (card tag "Set"). */
+		boolean set
 ) {
 	public record Swatch(Long optionId, String value, String swatch, StockState stockState) {}
 
@@ -42,7 +44,8 @@ public record ProductSummaryResponse(
 				p.isNewArrival(java.time.Instant.now()),
 				p.getOptions().stream().filter(o -> o.getSwatch() != null)
 						.map(o -> new Swatch(o.getId(), o.getValue(), o.getSwatch(), StockState.of(p.isPreorder(), o.getStock())))
-						.toList()
+						.toList(),
+				p.isSet()
 		);
 	}
 }
