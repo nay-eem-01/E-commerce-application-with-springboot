@@ -55,7 +55,7 @@ Swagger has every field. Breaking changes are recorded in `docs/DEV_LOG.md`.
 |---|---|---|
 | GET | `/api/categories` | `[{id, slug, name, label, blurb, productCount, comingSoon}]` (a coming-soon category has no products yet; offer early access) |
 | GET | `/api/characters` | `[{id, slug, name, label, blurb, productCount}]`: the shop's own characters (collections) |
-| GET | `/api/products` | filters `category, character, q, tag (repeatable, "Capacity:750 ml"; values of one group OR, groups AND), inStock, preorder, minPrice, maxPrice`; `sortBy` = `creationDate|price|name` → page of `ProductSummary` |
+| GET | `/api/products` | filters `category, character, set (true: sets only), q, tag (repeatable, "Capacity:750 ml"; values of one group OR, groups AND), inStock, preorder, minPrice, maxPrice`; `sortBy` = `creationDate|price|name` → page of `ProductSummary` |
 | GET | `/api/products/facets` | `?category=&character=` → `{groups: [{name, values: [{value, count}]}]}` for the filter sheet (measured values sorted by size) |
 | POST | `/api/early-access` | `{categorySlug, phone?, email?}` (one needed) → 200 "You are on the list"; same answer when already listed; 404 unless the category is coming soon; rate limited |
 | GET | `/api/products/{slug}` | `ProductDetail` (below) |

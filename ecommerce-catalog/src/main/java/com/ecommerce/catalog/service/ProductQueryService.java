@@ -34,9 +34,9 @@ public class ProductQueryService {
 	private final com.ecommerce.catalog.repository.ProductTagRepository productTagRepository;
 
 	public record Filter(String category, String q, Boolean inStock, Boolean preorder, BigDecimal minPrice, BigDecimal maxPrice,
-						 String character, List<String> tags) {
+						 String character, List<String> tags, Boolean set) {
 		public Filter(String category, String q, Boolean inStock, Boolean preorder, BigDecimal minPrice, BigDecimal maxPrice) {
-			this(category, q, inStock, preorder, minPrice, maxPrice, null, List.of());
+			this(category, q, inStock, preorder, minPrice, maxPrice, null, List.of(), null);
 		}
 	}
 
@@ -100,7 +100,7 @@ public class ProductQueryService {
 	@Transactional(readOnly = true)
 	public PageResponse<ProductSummaryResponse> find(ProductStatus status, Filter f, int pageNo, int pageSize, String sortBy, AscOrDescType dir) {
 		Specification<Product> spec = Specification.allOf(
-				status(status), category(f.category()), character(f.character()), tags(tagGroups(f.tags())),
+				status(status), category(f.category()), character(f.character()), tags(tagGroups(f.tags())), setsOnly(f.set()),
 				search(f.q()), inStockOnly(f.inStock()), preorderOnly(f.preorder()), minPrice(f.minPrice()), maxPrice(f.maxPrice()));
 		return PageResponse.of(productRepository.findAll(spec, Pages.of(pageNo, pageSize, sortBy, dir, SORTS)),
 				ProductSummaryResponse::from);
