@@ -53,20 +53,27 @@ Swagger has every field. Breaking changes are recorded in `docs/DEV_LOG.md`.
 ### Storefront (public)
 | Method | Path | |
 |---|---|---|
-| GET | `/api/categories` | `[{id, slug, name, label, blurb, productCount}]` |
-| GET | `/api/products` | filters `category, q, inStock, preorder, minPrice, maxPrice`; `sortBy` = `creationDate|price|name` → page of `ProductSummary` |
+| GET | `/api/categories` | `[{id, slug, name, label, blurb, productCount, comingSoon}]` (a coming-soon category has no products yet; offer early access) |
+| GET | `/api/characters` | `[{id, slug, name, label, blurb, productCount}]`: the shop's own characters (collections) |
+| GET | `/api/products` | filters `category, character, q, tag (repeatable, "Capacity:750 ml"; values of one group OR, groups AND), inStock, preorder, minPrice, maxPrice`; `sortBy` = `creationDate|price|name` → page of `ProductSummary` |
+| GET | `/api/products/facets` | `?category=&character=` → `{groups: [{name, values: [{value, count}]}]}` for the filter sheet (measured values sorted by size) |
+| POST | `/api/early-access` | `{categorySlug, phone?, email?}` (one needed) → 200 "You are on the list"; same answer when already listed; 404 unless the category is coming soon; rate limited |
 | GET | `/api/products/{slug}` | `ProductDetail` (below) |
 | GET | `/api/products/{slug}/related` | up to 4 `ProductSummary` |
 | GET | `/api/products/{slug}/reviews` | `{summary: {average, count, distribution}, reviews: page}` |
 
 `ProductSummary`: `id, slug, name, categorySlug, specLine, price, compareAtPrice, stockState
 (IN_STOCK|LOW_STOCK|SOLD_OUT|PREORDER), stockLeft (only when LOW_STOCK), preorderRelease
-("2027-01"), deposit, hasOptions, thumbnailUrl`.
+("2027-01"), deposit, hasOptions, thumbnailUrl, characterSlug, newArrival (listed in the last 30 days),
+swatches[{optionId, value, swatch, stockState}] (colour options: card dots and quick add), set (a set of other products)`.
 
 `ProductDetail` adds `maker, category{slug,name}, summary, description, story, storyQuote,
 preorder, sized (show size guide), optionName, options[{id, value, priceDelta, price,
 stockState, stockLeft, swatch}], facts[{label, value}] (first four = the fact grid),
-boxItems[], photos[{url, altText}], spinFrames[url] (360 viewer, in order), storyImage`.
+boxItems[], photos[{url, altText}], spinFrames[url] (360 viewer, in order), storyImage, character{slug,name,label},
+tags[{group, value}], newArrival, bundleItems[ProductSummary] (for a set: what it holds),
+sets[{set: ProductSummary, saving}] (sets containing this product: "Complete the set")`. A set has its own
+price and stock; buying it does not take stock from the products it holds.
 Text fields are **plain text** with paragraphs split by a blank line. Render as text, never HTML.
 
 ### Cart and wishlist (auth)
@@ -122,6 +129,8 @@ should have both routes.
 | GET | `/api/admin/users?q=` | `USER_READ` |
 | PUT | `/api/admin/users/{id}/status` `{status: ACTIVE|BANNED}` | `USER_UPDATE` |
 | PATCH | `/api/admin/reviews/{id}/status` `{status: PUBLISHED|HIDDEN}` | `REVIEW_MODERATE` |
+| GET/POST | `/api/admin/characters`, PUT/DELETE `/{id}` | `CATEGORY_WRITE` |
+| GET | `/api/admin/early-access?category=` | `USER_READ` |
 | GET | `/api/admin/notifications?status=PENDING|SENT|FAILED&orderNumber=` | `NOTIFICATION_MANAGE` |
 | POST | `/api/admin/notifications/{id}/retry` (FAILED only) | `NOTIFICATION_MANAGE` |
 

@@ -2,14 +2,15 @@
 
 ## Where we are
 
-Phase 1 (backend rewrite) is done: nine-module modular monolith on Spring Boot 3.5 /
+Phases 1 and 2 are merged. Step 2.8 (backend for the v2 redesign) is done on `feat/catalog-v2-base`.
+Phase 1 (backend rewrite): nine-module modular monolith on Spring Boot 3.5 /
 Java 21 / PostgreSQL, every storefront feature from the concept C design has an API, online
 payments are built and switched off, order emails go through a transactional outbox. 136 unit
 tests and an 84-check end-to-end script pass against a real database.
 
 ## Next up
 
-Phase 2: the storefront in its own repository, following concept C exactly (`docs/ROADMAP.md`).
+Step 2.9: the storefront v2 redesign in the frontend repository (`ecommerce_web`).
 
 ## Open items
 
@@ -21,6 +22,30 @@ Phase 2: the storefront in its own repository, following concept C exactly (`doc
 - CI is not set up yet; run `./mvnw -B verify` before every push.
 
 ---
+
+## 2026-11-03: Backend for the storefront v2 redesign (step 2.8)
+
+**Done**
+- Characters (V8): the shop's own collections with a sign label and product counts (`GET /api/characters`,
+  `?character=` filter, admin CRUD).
+- Filter tags (V8): grouped attributes (Capacity, Material; clothing sizes later), `?tag=Group:Value` (OR within a
+  group, AND across groups, one EXISTS each), `GET /api/products/facets` with counts, measured values sorted by size.
+- Cards carry colour swatches, character, a "New" flag (30 days) and a set flag; options, media and characters are
+  batch-fetched so a page of cards stays a handful of queries.
+- Sets (V9): a product made of other products with its own price and stock; the product page lists what a set holds
+  and the sets containing a product with their saving ("Complete the set").
+- Coming-soon categories and `POST /api/early-access` (V9): phone and/or email once per category, rate limited, the
+  same answer when already listed; staff list at `/api/admin/early-access`.
+- Development catalog is the launch range: bottles and school bags in Kitsune, Ramen Cat and Ronin, the Kitsune
+  school-run set, apparel coming soon. The end-to-end script follows it and checks the new endpoints.
+
+**Bugs found and fixed before commit**
+- `/api/characters` answered 401: the public GET list did not include it.
+- Capacity filters came back in text order ("1 L" before "500 ml").
+
+**Known limitations**
+- Selling a set does not take stock from its parts (roadmap 4.7).
+- Early-access signups are collected but not yet messaged when the category opens.
 
 ## 2026-11-02: Order emails (step 1.12)
 

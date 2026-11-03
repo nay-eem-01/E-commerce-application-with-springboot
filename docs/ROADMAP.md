@@ -3,7 +3,7 @@
 Phased steps; one small PR each (see `docs/GIT_WORKFLOW.md`). Tick a step in the same PR
 that finishes it.
 
-**Progress:** Phase 1 done (12/12). Phase 2: 0/7. Phase 3: 0/6. Phase 4: 0/6.
+**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b: 1/2. Phase 3: 0/6. Phase 4: 0/6.
 
 ## Phase 1: rewrite the backend (done)
 
@@ -22,13 +22,18 @@ that finishes it.
 
 ## Phase 2: storefront (frontend repository, follows concept C exactly)
 
-- [ ] 2.1 Repo scaffold following agrotrends_web conventions (Vite + React + TypeScript), API client with refresh handling, design tokens from the prototype
-- [ ] 2.2 Home, category lists with filters, search
-- [ ] 2.3 Product page: 360 viewer on `spinFrames`, facts, options, tabs, related, reviews
-- [ ] 2.4 Guest cart (browser storage) + quote; member cart + merge
-- [ ] 2.5 Checkout with Idempotency-Key, payment redirect and result page, retry payment, confirmation, guest tracking
-- [ ] 2.6 OTP sign-in, account: orders, wishlist, addresses
-- [ ] 2.7 Playwright end-to-end tests for browse → checkout → track
+- [x] 2.1 Repo scaffold following agrotrends_web conventions (Vite + React + TypeScript), API client with refresh handling, design tokens from the prototype
+- [x] 2.2 Home, category lists with filters, search
+- [x] 2.3 Product page: 360 viewer on `spinFrames`, facts, options, tabs, related, reviews
+- [x] 2.4 Guest cart (browser storage) + quote; member cart + merge
+- [x] 2.5 Checkout with Idempotency-Key, payment redirect and result page, retry payment, confirmation, guest tracking
+- [x] 2.6 OTP sign-in, account: orders, wishlist, addresses
+- [x] 2.7 Playwright end-to-end tests for browse → checkout → track
+
+## Phase 2b: storefront v2 (the product-first redesign, "Senpai Supply v2" canvas)
+
+- [x] 2.8 Backend for v2: characters, filter tags and facets, card swatches and new flag, sets, coming-soon categories with early access (V8, V9), launch demo catalog
+- [ ] 2.9 Storefront v2: every screen on phone and desktop as designed (frontend repository)
 
 ## Phase 3: production readiness
 
@@ -47,3 +52,4 @@ that finishes it.
 - [ ] 4.4 Courier integration (delivery_app or Steadfast/Pathao) for SHIPPED/DELIVERED updates
 - [ ] 4.5 Admin web UI
 - [ ] 4.6 Gacha corner
+- [ ] 4.7 Sets that take stock from their parts (today a set has its own stock)
