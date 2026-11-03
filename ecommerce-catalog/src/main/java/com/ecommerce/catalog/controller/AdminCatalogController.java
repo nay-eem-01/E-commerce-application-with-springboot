@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminCatalogController {
 
 	private final CategoryService categoryService;
+	private final com.ecommerce.catalog.service.CharacterService characterService;
 	private final ProductAdminService productAdminService;
 	private final ProductQueryService productQueryService;
 
@@ -68,6 +69,35 @@ public class AdminCatalogController {
 	public ResponseEntity<Response> deleteCategory(@PathVariable Long id) {
 		categoryService.delete(id);
 		return Response.ok("Category deleted.");
+	}
+
+	@Operation(summary = "All characters, including inactive ones.")
+	@PreAuthorize("hasAuthority('CATEGORY_WRITE')")
+	@GetMapping("/characters")
+	public ResponseEntity<Response> characters() {
+		return Response.ok("Characters loaded.", characterService.listAll());
+	}
+
+	@Operation(summary = "Create a character.")
+	@PreAuthorize("hasAuthority('CATEGORY_WRITE')")
+	@PostMapping("/characters")
+	public ResponseEntity<Response> createCharacter(@Valid @RequestBody com.ecommerce.catalog.dto.request.CharacterRequest request) {
+		return Response.created("Character created.", characterService.create(request));
+	}
+
+	@Operation(summary = "Edit a character.")
+	@PreAuthorize("hasAuthority('CATEGORY_WRITE')")
+	@PutMapping("/characters/{id}")
+	public ResponseEntity<Response> updateCharacter(@PathVariable Long id, @Valid @RequestBody com.ecommerce.catalog.dto.request.CharacterRequest request) {
+		return Response.ok("Character updated.", characterService.update(id, request));
+	}
+
+	@Operation(summary = "Delete a character that has no products.")
+	@PreAuthorize("hasAuthority('CATEGORY_WRITE')")
+	@DeleteMapping("/characters/{id}")
+	public ResponseEntity<Response> deleteCharacter(@PathVariable Long id) {
+		characterService.delete(id);
+		return Response.ok("Character deleted.");
 	}
 
 	@Operation(summary = "All products in any status. Paginated, searchable.")

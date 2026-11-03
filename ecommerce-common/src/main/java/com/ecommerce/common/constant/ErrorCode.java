@@ -39,6 +39,10 @@ public final class ErrorCode {
 	public static final String CATEGORY_NOT_FOUND = "Category not found.";
 	public static final String CATEGORY_SLUG_TAKEN = "A category with this slug already exists.";
 	public static final String CATEGORY_NOT_EMPTY = "This category still has products. Move or archive them first.";
+	public static final String CHARACTER_NOT_FOUND = "Character not found.";
+	public static final String CHARACTER_SLUG_TAKEN = "A character with this slug already exists.";
+	public static final String CHARACTER_NOT_EMPTY = "This character still has products. Move or archive them first.";
+	public static final String TAG_FILTER_INVALID = "Use filters like Capacity:750 ml.";
 	public static final String PRODUCT_NOT_FOUND = "Product not found.";
 	public static final String PRODUCT_SLUG_TAKEN = "A product with this slug already exists.";
 	public static final String OPTION_NOT_FOUND = "That option is not available for this product.";

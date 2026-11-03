@@ -43,9 +43,16 @@ public record ProductDetailResponse(
 		List<MediaResponse> photos,
 		List<String> spinFrames,
 		MediaResponse storyImage,
-		ProductStatus status
+		ProductStatus status,
+		/** The character collection, or null. */
+		CharacterRef character,
+		/** Filterable attributes, e.g. Capacity: 750 ml. */
+		List<TagResponse> tags,
+		boolean newArrival
 ) {
 	public record CategoryRef(String slug, String name) {}
+	public record CharacterRef(String slug, String name, String label) {}
+	public record TagResponse(String group, String value) {}
 
 	public record OptionResponse(Long id, String value, BigDecimal priceDelta, BigDecimal price, StockState stockState, Integer stockLeft, String swatch) {}
 
@@ -70,7 +77,11 @@ public record ProductDetailResponse(
 				media.stream().filter(m -> m.getKind() == MediaKind.PHOTO).map(m -> new MediaResponse(m.getUrl(), m.getAltText())).toList(),
 				media.stream().filter(m -> m.getKind() == MediaKind.SPIN_FRAME).map(ProductMedia::getUrl).toList(),
 				media.stream().filter(m -> m.getKind() == MediaKind.STORY).findFirst().map(m -> new MediaResponse(m.getUrl(), m.getAltText())).orElse(null),
-				p.getStatus()
+				p.getStatus(),
+				p.getCharacter() == null ? null
+						: new CharacterRef(p.getCharacter().getSlug(), p.getCharacter().getName(), p.getCharacter().getLabel()),
+				p.getTags().stream().map(t -> new TagResponse(t.getGroup(), t.getValue())).toList(),
+				p.isNewArrival(java.time.Instant.now())
 		);
 	}
 
