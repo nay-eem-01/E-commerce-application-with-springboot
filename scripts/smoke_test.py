@@ -65,35 +65,67 @@ def otp_code(phone_local):
 
 # --- storefront ---
 s, r = call("GET", "/api/categories")
-check("categories public", s == 200 and len(r["payload"]) == 4, r)
-s, r = call("GET", "/api/products?category=figures")
-check("list by category", s == 200 and r["payload"]["totalElements"] == 3, r)
-s, r = call("GET", "/api/products?q=wig")
-check("search", s == 200 and r["payload"]["content"][0]["slug"] == "silver-wig", r)
+check("categories public, apparel coming soon", s == 200 and len(r["payload"]) == 3 and r["payload"][2]["comingSoon"], r)
+s, r = call("GET", "/api/products?category=bags")
+check("list by category", s == 200 and r["payload"]["totalElements"] == 5, r)
+s, r = call("GET", "/api/products?q=slurping")
+check("search", s == 200 and r["payload"]["content"][0]["slug"] == "ramen-cat-bottle", r)
 s, r = call("GET", "/api/products?inStock=true&maxPrice=1000&sortBy=price&ascOrDesc=asc")
 check("filter + sort", s == 200 and all(p["price"] <= 1000 for p in r["payload"]["content"]), r)
 s, r = call("GET", "/api/products?sortBy=password")
 check("unknown sort is 400", s == 400, (s, r))
 s, r = call("GET", "/api/products?pageSize=5000")
 check("pageSize clamped to 100", s == 200 and r["payload"]["pageSize"] == 100, r)
-s, r = call("GET", "/api/products/kitsune-set")
+s, r = call("GET", "/api/products/kitsune-backpack")
 kitsune = r["payload"]
-check("product detail", s == 200 and kitsune["optionName"] == "Size" and len(kitsune["facts"]) == 4, r)
-xl = [o for o in kitsune["options"] if o["value"] == "XL"][0]
+check("product detail", s == 200 and kitsune["optionName"] == "Colour" and len(kitsune["facts"]) == 4 and kitsune["character"]["slug"] == "kitsune", r)
+xl = [o for o in kitsune["options"] if o["value"] == "Night black"][0]
 check("sold-out option flagged", xl["stockState"] == "SOLD_OUT", xl)
 s, r = call("GET", "/api/products/does-not-exist")
 check("unknown product 404", s == 404, s)
-s, r = call("GET", "/api/products/ronin-swordsman/related")
+s, r = call("GET", "/api/products/kitsune-night-bottle/related")
 check("related", s == 200 and len(r["payload"]) == 4, r)
 s, r = call("GET", "/api/checkout/delivery-options")
 check("delivery options (dev: COD + fake online)", s == 200 and r["payload"]["paymentMethods"] == ["COD", "BKASH", "CARD"], r)
 
+# --- characters, filters, sets, early access (catalog v2) ---
+s, r = call("GET", "/api/characters")
+check("characters public with counts", s == 200 and [c["slug"] for c in r["payload"]] == ["kitsune", "ramen-cat", "ronin"] and r["payload"][0]["productCount"] == 4, r)
+s, r = call("GET", "/api/products/facets?category=bottles")
+caps = [v["value"] for g in r["payload"]["groups"] if g["name"] == "Capacity" for v in g["values"]] if s == 200 else []
+check("facets sorted by size", caps == ["500 ml", "600 ml", "750 ml", "1 L"], r)
+s, r = call("GET", "/api/products?category=bottles&tag=Capacity:500%20ml&tag=Capacity:1%20L&tag=Material:Steel")
+check("tag filter: OR within a group, AND across groups", s == 200 and [p["slug"] for p in r["payload"]["content"]] == ["ronin-bottle"], r)
+s, r = call("GET", "/api/products?tag=Steel")
+check("malformed tag filter 400", s == 400, (s, r))
+s, r = call("GET", "/api/products?character=ramen-cat")
+check("character filter", s == 200 and r["payload"]["totalElements"] == 2, r)
+s, r = call("GET", "/api/products?category=bottles&sortBy=creationDate")
+card = [p for p in r["payload"]["content"] if p["slug"] == "kitsune-night-bottle"][0]
+check("card swatches, character and new flag", [w["value"] for w in card["swatches"]] == ["Petal pink", "Night navy"] and card["characterSlug"] == "kitsune" and card["newArrival"], card)
+s, r = call("GET", "/api/products/kitsune-night-bottle")
+check("complete the set offer with saving", s == 200 and r["payload"]["sets"][0]["set"]["slug"] == "kitsune-school-run-set" and r["payload"]["sets"][0]["saving"] == 410, r)
+s, r = call("GET", "/api/products/kitsune-school-run-set")
+check("set lists what it holds", s == 200 and [p["slug"] for p in r["payload"]["bundleItems"]] == ["kitsune-backpack", "kitsune-night-bottle"], r)
+s, r = call("GET", "/api/products?preorder=true")
+check("pre-orders are reservable, not sold out", s == 200 and r["payload"]["totalElements"] == 2 and all(p["stockState"] == "PREORDER" for p in r["payload"]["content"]), r)
+s, r = call("GET", "/api/products?set=true")
+check("sets filter", s == 200 and [p["slug"] for p in r["payload"]["content"]] == ["kitsune-school-run-set"], r)
+s, r = call("POST", "/api/early-access", {"categorySlug": "apparel", "phone": "01712345678"})
+check("early access signup", s == 200, (s, r))
+s, r = call("POST", "/api/early-access", {"categorySlug": "apparel", "phone": "+8801712345678"})
+check("early access twice answers the same", s == 200, (s, r))
+s, r = call("POST", "/api/early-access", {"categorySlug": "bottles", "phone": "01712345678"})
+check("early access only for coming soon", s == 404, (s, r))
+s, r = call("POST", "/api/early-access", {"categorySlug": "apparel"})
+check("early access needs a contact", s == 400, (s, r))
+
 # --- quote ---
-s, r = call("GET", "/api/products/silver-wig"); wig = r["payload"]
-m = [o for o in kitsune["options"] if o["value"] == "M"][0]
+s, r = call("GET", "/api/products/ramen-cat-bottle"); wig = r["payload"]
+m = [o for o in kitsune["options"] if o["value"] == "Petal pink"][0]
 s, r = call("POST", "/api/checkout/quote", {"items": [{"productId": wig["id"], "quantity": 1}], "district": "Sylhet"})
-check("quote outside Dhaka fee 130", s == 200 and r["payload"]["deliveryFee"] == 130 and r["payload"]["total"] == 1480, r)
-s, r = call("POST", "/api/checkout/quote", {"items": [{"productId": kitsune["id"], "optionId": m["id"], "quantity": 1}]})
+check("quote outside Dhaka fee 130", s == 200 and r["payload"]["deliveryFee"] == 130 and r["payload"]["total"] == 1020, r)
+s, r = call("POST", "/api/checkout/quote", {"items": [{"productId": kitsune["id"], "optionId": m["id"], "quantity": 2}]})
 check("quote over threshold is free", s == 200 and r["payload"]["deliveryFee"] == 0, r)
 s, r = call("POST", "/api/checkout/quote", {"items": [{"productId": kitsune["id"], "quantity": 1}]})
 check("missing option is 400", s == 400, (s, r))
@@ -107,17 +139,17 @@ s, r = call("POST", "/api/orders", order_body)
 check("order without Idempotency-Key 400", s == 400, (s, r))
 key = str(uuid.uuid4())
 s, r = call("POST", "/api/orders", order_body, headers={"Idempotency-Key": key})
-check("guest order placed", s == 201 and r["payload"]["total"] == 1420 and r["payload"]["status"] == "PLACED", r)
+check("guest order placed", s == 201 and r["payload"]["total"] == 960 and r["payload"]["status"] == "PLACED", r)
 guest_no = r["payload"]["orderNumber"]
 s, r2 = call("POST", "/api/orders", order_body, headers={"Idempotency-Key": key})
 check("retry same key returns same order", s == 201 and r2["payload"]["orderNumber"] == guest_no, r2)
-s, r = call("GET", "/api/products/silver-wig")
+s, r = call("GET", "/api/products/ramen-cat-bottle")
 check("stock decremented once (3 -> 2)", r["payload"]["stockLeft"] == 2, r["payload"]["stockLeft"])
 s, r = call("POST", "/api/orders", dict(order_body, paymentMethod="NAGAD"), headers={"Idempotency-Key": str(uuid.uuid4())})
 check("disabled payment method 400", s == 400, (s, r))
 
 # --- online payment through the fake provider (development only) ---
-s, r = call("GET", "/api/products/mecha-shaker"); shaker = r["payload"]
+s, r = call("GET", "/api/products/sakura-shaker"); shaker = r["payload"]
 online_body = dict(order_body, items=[{"productId": shaker["id"], "quantity": 1}], paymentMethod="BKASH")
 s, r = call("POST", "/api/orders", online_body, headers={"Idempotency-Key": str(uuid.uuid4())})
 pay = r["payload"]["paymentAction"] if s == 201 else None
@@ -190,19 +222,19 @@ check("sign in again", s == 200, r)
 
 # --- cart + wishlist ---
 s, r = call("PUT", "/api/cart/items", {"productId": kitsune["id"], "optionId": m["id"], "quantity": 2}, token=tok)
-check("cart set line", s == 200 and r["payload"]["subtotal"] == 8400, r)
+check("cart set line", s == 200 and r["payload"]["subtotal"] == 5900, r)
 s, r = call("POST", "/api/cart/merge", {"items": [{"productId": wig["id"], "quantity": 1}, {"productId": 999999, "quantity": 1}]}, token=tok)
 check("merge skips unknown products", s == 200 and len(r["payload"]["items"]) == 2, r)
 s, r = call("PUT", f"/api/wishlist/{wig['id']}", token=tok)
 s, r = call("GET", "/api/wishlist", token=tok)
-check("wishlist", s == 200 and r["payload"][0]["slug"] == "silver-wig", r)
+check("wishlist", s == 200 and r["payload"][0]["slug"] == "ramen-cat-bottle", r)
 
 # --- member checkout clears bought lines and saves address ---
 s, r = call("POST", "/api/orders", {"items": [{"productId": kitsune["id"], "optionId": m["id"], "quantity": 2}],
                                      "fullName": "Tasnim Rahman", "phone": "01911111111", "email": "tasnim@example.com", "district": "Gazipur",
                                      "area": "Tongi", "addressLine": "Road 3, House 9", "paymentMethod": "COD"},
             token=tok, headers={"Idempotency-Key": str(uuid.uuid4())})
-check("member order", s == 201 and r["payload"]["deliveryFee"] == 0 and r["payload"]["amountDueOnDelivery"] == 8400, r)
+check("member order", s == 201 and r["payload"]["deliveryFee"] == 0 and r["payload"]["amountDueOnDelivery"] == 5900, r)
 member_no = r["payload"]["orderNumber"]
 s, r = call("GET", "/api/cart", token=tok)
 check("bought line left the cart", s == 200 and len(r["payload"]["items"]) == 1, r)
@@ -224,7 +256,7 @@ s, r = call("GET", "/api/admin/orders", token=other)
 check("customer on admin endpoint 403", s == 403, s)
 
 # review before delivery is refused
-s, r = call("POST", "/api/products/kitsune-set/reviews", {"rating": 5, "body": "Great costume, fits well."}, token=tok)
+s, r = call("POST", "/api/products/kitsune-backpack/reviews", {"rating": 5, "body": "Great backpack, the pocket fits the bottle."}, token=tok)
 check("review before delivery 403", s == 403, (s, r))
 
 # --- admin ---
@@ -260,7 +292,7 @@ check("pack, ship, deliver", s == 200 and r["payload"]["status"] == "DELIVERED" 
 check("timeline has 4 steps", len(r["payload"]["timeline"]) == 4, r["payload"]["timeline"])
 s, r = call("PATCH", f"/api/admin/orders/{guest_no}/status", {"action": "CANCEL", "note": "Customer called"}, token=adm)
 check("cancel guest order", s == 200 and r["payload"]["status"] == "CANCELLED", r)
-s, r = call("GET", "/api/products/silver-wig")
+s, r = call("GET", "/api/products/ramen-cat-bottle")
 check("cancel restored stock (2 -> 3)", r["payload"]["stockLeft"] == 3, r["payload"]["stockLeft"])
 
 # --- order emails (development: logged, not sent) ---
@@ -288,14 +320,14 @@ s, r = call("GET", "/api/admin/notifications", token=other)
 check("customers cannot read the outbox", s == 403, s)
 
 # --- review after delivery ---
-s, r = call("POST", "/api/products/kitsune-set/reviews", {"rating": 5, "body": "Great costume, fits well."}, token=tok)
+s, r = call("POST", "/api/products/kitsune-backpack/reviews", {"rating": 5, "body": "Great backpack, the pocket fits the bottle."}, token=tok)
 check("verified review", s == 201 and r["payload"]["authorName"] == "Tasnim R.", r)
 review_id = r["payload"]["id"]
-s, r = call("POST", "/api/products/kitsune-set/reviews", {"rating": 4, "body": "Second try at a review."}, token=tok)
+s, r = call("POST", "/api/products/kitsune-backpack/reviews", {"rating": 4, "body": "Second try at a review."}, token=tok)
 check("second review 409", s == 409, s)
 s, r = call("PUT", f"/api/reviews/{review_id}", {"rating": 1, "body": "Trying to edit someone else's."}, token=other)
 check("edit other's review 403", s == 403, s)
-s, r = call("GET", "/api/products/kitsune-set/reviews")
+s, r = call("GET", "/api/products/kitsune-backpack/reviews")
 check("review summary", s == 200 and r["payload"]["summary"]["count"] == 1 and r["payload"]["summary"]["average"] == 5.0, r)
 
 # --- product admin ---
@@ -313,6 +345,10 @@ check("admin creates product", s == 201 and r["payload"]["spinFrames"] == ["http
 s, r = call("POST", "/api/auth/sign-out", token=tok)
 s2, r2 = call("GET", "/api/users/me", token=tok)
 check("sign-out kills the token", s == 200 and s2 == 401, (s, s2))
+
+# early-access list is staff-only and shows the canonical number once
+s, r = call("GET", "/api/admin/early-access?category=apparel", token=adm)
+check("admin early-access list", s == 200 and r["payload"]["totalElements"] == 1 and r["payload"]["content"][0]["phone"] == "01712345678", r)
 
 # errors carry a correlation id and no internals
 s, r = call("GET", "/api/nope", token=adm)

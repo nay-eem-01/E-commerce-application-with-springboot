@@ -39,6 +39,13 @@ public final class ErrorCode {
 	public static final String CATEGORY_NOT_FOUND = "Category not found.";
 	public static final String CATEGORY_SLUG_TAKEN = "A category with this slug already exists.";
 	public static final String CATEGORY_NOT_EMPTY = "This category still has products. Move or archive them first.";
+	public static final String CHARACTER_NOT_FOUND = "Character not found.";
+	public static final String CHARACTER_SLUG_TAKEN = "A character with this slug already exists.";
+	public static final String CHARACTER_NOT_EMPTY = "This character still has products. Move or archive them first.";
+	public static final String TAG_FILTER_INVALID = "Use filters like Capacity:750 ml.";
+	public static final String BUNDLE_ITEM_INVALID = "A set can only hold other products that are not sets themselves.";
+	public static final String EARLY_ACCESS_CLOSED = "Early access is not open for this.";
+	public static final String EARLY_ACCESS_CONTACT_REQUIRED = "Enter a mobile number or an email so we can tell you.";
 	public static final String PRODUCT_NOT_FOUND = "Product not found.";
 	public static final String PRODUCT_SLUG_TAKEN = "A product with this slug already exists.";
 	public static final String OPTION_NOT_FOUND = "That option is not available for this product.";

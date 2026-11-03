@@ -29,6 +29,7 @@ public class StorefrontController {
 
 	private final CategoryService categoryService;
 	private final ProductQueryService productQueryService;
+	private final com.ecommerce.catalog.service.CharacterService characterService;
 
 	@Operation(summary = "Active categories with how many products each has.")
 	@GetMapping("/categories")
@@ -36,20 +37,38 @@ public class StorefrontController {
 		return Response.ok("Categories loaded.", categoryService.listActive());
 	}
 
-	@Operation(summary = "Product list and search. Filter by category slug, text, stock, pre-order and price range; sort by creationDate, price or name.")
+	@Operation(summary = "Active characters (the shop's collections) with how many products each has.")
+	@GetMapping("/characters")
+	public ResponseEntity<Response> characters() {
+		return Response.ok("Characters loaded.", characterService.listActive());
+	}
+
+	@Operation(summary = "Filter groups and values (Capacity, Material, ...) with product counts, for a category and/or character.")
+	@GetMapping("/products/facets")
+	public ResponseEntity<Response> facets(
+			@RequestParam(required = false) @Size(max = 60) String category,
+			@RequestParam(required = false) @Size(max = 60) String character) {
+		return Response.ok("Filters loaded.", productQueryService.facets(category, character));
+	}
+
+	@Operation(summary = "Product list and search. Filter by category or character slug, sets only (set=true), text, tags (\"Capacity:750 ml\", repeatable), stock, pre-order and price range; sort by creationDate, price or name.")
 	@GetMapping("/products")
 	public ResponseEntity<Response> products(
 			@RequestParam(required = false) String category,
+			@RequestParam(required = false) @Size(max = 60) String character,
+			@RequestParam(required = false) @Size(max = 20) java.util.List<@Size(max = 80) String> tag,
 			@RequestParam(required = false) @Size(max = 100) String q,
 			@RequestParam(required = false) Boolean inStock,
 			@RequestParam(required = false) Boolean preorder,
+			@RequestParam(required = false) Boolean set,
 			@RequestParam(required = false) BigDecimal minPrice,
 			@RequestParam(required = false) BigDecimal maxPrice,
 			@RequestParam(name = AppConstants.PAGE_NO, defaultValue = AppConstants.PAGE_NO_VALUE) int pageNo,
 			@RequestParam(name = AppConstants.PAGE_SIZE, defaultValue = AppConstants.PAGE_SIZE_VALUE) int pageSize,
 			@RequestParam(name = AppConstants.SORT_BY, defaultValue = AppConstants.SORT_BY_VALUE) String sortBy,
 			@RequestParam(name = AppConstants.ASC_OR_DESC, defaultValue = AppConstants.ASC_OR_DESC_VALUE) AscOrDescType ascOrDesc) {
-		ProductQueryService.Filter filter = new ProductQueryService.Filter(category, q, inStock, preorder, minPrice, maxPrice);
+		ProductQueryService.Filter filter = new ProductQueryService.Filter(category, q, inStock, preorder, minPrice, maxPrice,
+				character, tag == null ? java.util.List.of() : tag, set);
 		return Response.ok("Products loaded.", productQueryService.list(filter, pageNo, pageSize, sortBy, ascOrDesc));
 	}
 

@@ -31,8 +31,65 @@ public class ProductQueryService {
 	static final Set<String> SORTS = Set.of(AppConstants.SORT_BY_VALUE, "price", "name");
 
 	private final ProductRepository productRepository;
+	private final com.ecommerce.catalog.repository.ProductTagRepository productTagRepository;
 
-	public record Filter(String category, String q, Boolean inStock, Boolean preorder, BigDecimal minPrice, BigDecimal maxPrice) {}
+	public record Filter(String category, String q, Boolean inStock, Boolean preorder, BigDecimal minPrice, BigDecimal maxPrice,
+						 String character, List<String> tags, Boolean set) {
+		public Filter(String category, String q, Boolean inStock, Boolean preorder, BigDecimal minPrice, BigDecimal maxPrice) {
+			this(category, q, inStock, preorder, minPrice, maxPrice, null, List.of(), null);
+		}
+	}
+
+	/** "Capacity:750 ml" pairs grouped by group; a malformed pair is a 400, not a silent no-op. */
+	static java.util.Map<String, List<String>> tagGroups(List<String> tags) {
+		java.util.Map<String, List<String>> byGroup = new java.util.LinkedHashMap<>();
+		if (tags == null) {
+			return byGroup;
+		}
+		for (String tag : tags) {
+			int at = tag == null ? -1 : tag.indexOf(':');
+			if (at <= 0 || at == tag.length() - 1) {
+				throw ResponseException.badRequest(ErrorCode.TAG_FILTER_INVALID);
+			}
+			byGroup.computeIfAbsent(tag.substring(0, at).trim(), k -> new ArrayList<>()).add(tag.substring(at + 1).trim());
+		}
+		return byGroup;
+	}
+
+	@Transactional(readOnly = true)
+	public com.ecommerce.catalog.dto.response.FacetsResponse facets(String category, String character) {
+		java.util.Map<String, List<com.ecommerce.catalog.dto.response.FacetsResponse.Value>> groups = new java.util.LinkedHashMap<>();
+		for (Object[] row : productTagRepository.facetCounts(ProductStatus.ACTIVE, category == null ? "" : category,
+				character == null ? "" : character)) {
+			groups.computeIfAbsent((String) row[0], k -> new ArrayList<>())
+					.add(new com.ecommerce.catalog.dto.response.FacetsResponse.Value((String) row[1], (Long) row[2]));
+		}
+		return new com.ecommerce.catalog.dto.response.FacetsResponse(groups.entrySet().stream()
+				.map(e -> new com.ecommerce.catalog.dto.response.FacetsResponse.Group(e.getKey(),
+						e.getValue().stream().sorted((x, y) -> compareAmounts(x.value(), y.value())).toList()))
+				.toList());
+	}
+
+	private static final java.util.regex.Pattern AMOUNT = java.util.regex.Pattern.compile("^\\s*(\\d+(?:\\.\\d+)?)\\s*(ml|l|g|kg|cm|m)?\\b.*", java.util.regex.Pattern.CASE_INSENSITIVE);
+	private static final java.util.Map<String, Double> UNIT = java.util.Map.of("ml", 1d, "l", 1000d, "g", 1d, "kg", 1000d, "cm", 1d, "m", 100d);
+
+	/**
+	 * Measured values sort by size ("500 ml" before "1 L"); anything else keeps the database order
+	 * (so sizes like S, M, L stay as entered).
+	 */
+	static int compareAmounts(String a, String b) {
+		Double x = amount(a), y = amount(b);
+		return x != null && y != null ? Double.compare(x, y) : 0;
+	}
+
+	private static Double amount(String value) {
+		java.util.regex.Matcher m = AMOUNT.matcher(value);
+		if (!m.matches()) {
+			return null;
+		}
+		String unit = m.group(2) == null ? "" : m.group(2).toLowerCase(java.util.Locale.ROOT);
+		return Double.parseDouble(m.group(1)) * UNIT.getOrDefault(unit, 1d);
+	}
 
 	@Transactional(readOnly = true)
 	public PageResponse<ProductSummaryResponse> list(Filter f, int pageNo, int pageSize, String sortBy, AscOrDescType dir) {
@@ -43,15 +100,16 @@ public class ProductQueryService {
 	@Transactional(readOnly = true)
 	public PageResponse<ProductSummaryResponse> find(ProductStatus status, Filter f, int pageNo, int pageSize, String sortBy, AscOrDescType dir) {
 		Specification<Product> spec = Specification.allOf(
-				status(status), category(f.category()), search(f.q()), inStockOnly(f.inStock()),
-				preorderOnly(f.preorder()), minPrice(f.minPrice()), maxPrice(f.maxPrice()));
+				status(status), category(f.category()), character(f.character()), tags(tagGroups(f.tags())), setsOnly(f.set()),
+				search(f.q()), inStockOnly(f.inStock()), preorderOnly(f.preorder()), minPrice(f.minPrice()), maxPrice(f.maxPrice()));
 		return PageResponse.of(productRepository.findAll(spec, Pages.of(pageNo, pageSize, sortBy, dir, SORTS)),
 				ProductSummaryResponse::from);
 	}
 
 	@Transactional(readOnly = true)
 	public ProductDetailResponse detail(String slug) {
-		return ProductDetailResponse.from(activeBySlug(slug));
+		Product product = activeBySlug(slug);
+		return ProductDetailResponse.from(product, productRepository.findActiveSetsContaining(product.getId()));
 	}
 
 	/** Same category first, then newest from other categories; up to four. */

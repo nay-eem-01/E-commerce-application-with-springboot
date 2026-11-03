@@ -35,6 +35,9 @@ public class ProductRequest {
 	@NotNull(message = "Choose a category.")
 	private Long categoryId;
 
+	/** The character collection, or null. */
+	private Long characterId;
+
 	@NotBlank(message = "Enter a name.")
 	@Size(max = 140, message = "Use at most 140 characters for the name.")
 	private String name;
@@ -105,6 +108,26 @@ public class ProductRequest {
 	@Valid
 	@Size(max = 60, message = "A product can have at most 60 images.")
 	private List<MediaRequest> media = new ArrayList<>();
+
+	/** Makes this product a set of these products (in this order). Empty for an ordinary product. */
+	@Size(max = 10, message = "A set can hold at most 10 products.")
+	private List<@jakarta.validation.constraints.NotNull Long> bundleProductIds = new ArrayList<>();
+
+	@Valid
+	@Size(max = 30, message = "A product can have at most 30 tags.")
+	private List<TagRequest> tags = new ArrayList<>();
+
+	@Getter
+	@Setter
+	public static class TagRequest {
+		@NotBlank(message = "Enter the tag group, like Capacity.")
+		@Size(max = 30, message = "Use at most 30 characters for a tag group.")
+		@Pattern(regexp = "^[^:]+$", message = "A tag group cannot contain a colon.")
+		private String group;
+		@NotBlank(message = "Enter the tag value, like 750 ml.")
+		@Size(max = 40, message = "Use at most 40 characters for a tag value.")
+		private String value;
+	}
 
 	@Getter
 	@Setter

@@ -44,6 +44,11 @@ public class Product extends AuditModel {
 	@JoinColumn(name = "category_id")
 	private Category category;
 
+	/** The shop character this product belongs to, if any. */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "character_id")
+	private ShopCharacter character;
+
 	@Column(nullable = false, length = 140)
 	private String name;
 
@@ -105,6 +110,7 @@ public class Product extends AuditModel {
 
 	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
 	@OrderBy("sortOrder ASC, id ASC")
+	@org.hibernate.annotations.BatchSize(size = 100)
 	private List<ProductOption> options = new ArrayList<>();
 
 	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -117,7 +123,27 @@ public class Product extends AuditModel {
 
 	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
 	@OrderBy("kind ASC, sortOrder ASC, id ASC")
+	@org.hibernate.annotations.BatchSize(size = 100)
 	private List<ProductMedia> media = new ArrayList<>();
+
+	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("sortOrder ASC, id ASC")
+	private List<ProductTag> tags = new ArrayList<>();
+
+	/** What a set holds; empty for an ordinary product. */
+	@OneToMany(mappedBy = "bundle", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("sortOrder ASC, id ASC")
+	@org.hibernate.annotations.BatchSize(size = 100)
+	private List<ProductBundleItem> bundleItems = new ArrayList<>();
+
+	public boolean isSet() {
+		return !bundleItems.isEmpty();
+	}
+
+	/** Listed in the last 30 days: the card shows "New". */
+	public boolean isNewArrival(java.time.Instant now) {
+		return getCreationDate() != null && getCreationDate().isAfter(now.minus(java.time.Duration.ofDays(30)));
+	}
 
 	public boolean hasOptions() {
 		return !options.isEmpty();

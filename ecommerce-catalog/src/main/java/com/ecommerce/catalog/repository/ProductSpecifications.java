@@ -27,6 +27,38 @@ public final class ProductSpecifications {
 				: cb.equal(root.join("category", JoinType.INNER).get("slug"), slug);
 	}
 
+	public static Specification<Product> character(String slug) {
+		return (root, q, cb) -> slug == null || slug.isBlank() ? null
+				: cb.equal(root.join("character", JoinType.INNER).get("slug"), slug);
+	}
+
+	/**
+	 * Tag filters as "Group:Value". Values of one group widen the list (750 ml or 1 L); groups
+	 * narrow it (750 ml and Steel). Each group is one EXISTS subquery, so products never repeat.
+	 */
+	public static Specification<Product> tags(java.util.Map<String, java.util.List<String>> byGroup) {
+		return (root, query, cb) -> {
+			if (byGroup == null || byGroup.isEmpty()) {
+				return null;
+			}
+			java.util.List<jakarta.persistence.criteria.Predicate> all = new java.util.ArrayList<>();
+			for (var e : byGroup.entrySet()) {
+				var sub = query.subquery(Long.class);
+				var t = sub.from(com.ecommerce.catalog.entity.ProductTag.class);
+				sub.select(t.get("id")).where(cb.equal(t.get("product"), root), cb.equal(t.get("group"), e.getKey()),
+						t.get("value").in(e.getValue()));
+				all.add(cb.exists(sub));
+			}
+			return cb.and(all.toArray(jakarta.persistence.criteria.Predicate[]::new));
+		};
+	}
+
+	/** true: only sets; false: only ordinary products; null: both. */
+	public static Specification<Product> setsOnly(Boolean set) {
+		return (root, q, cb) -> set == null ? null
+				: set ? cb.isNotEmpty(root.get("bundleItems")) : cb.isEmpty(root.get("bundleItems"));
+	}
+
 	public static Specification<Product> inStockOnly(Boolean inStock) {
 		return (root, q, cb) -> Boolean.TRUE.equals(inStock) ? cb.greaterThan(root.get("stock"), 0) : null;
 	}

@@ -24,6 +24,15 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
 	boolean existsByCategoryId(Long categoryId);
 
+	boolean existsByCharacterId(Long characterId);
+
+	/** Active sets that contain this product, for "Complete the set". */
+	@Query("select distinct b.bundle from ProductBundleItem b where b.component.id = :id and b.bundle.status = com.ecommerce.catalog.enums.ProductStatus.ACTIVE")
+	List<Product> findActiveSetsContaining(@Param("id") Long id);
+
+	@Query("select p.character.id, count(p) from Product p where p.status = :status and p.character is not null group by p.character.id")
+	List<Object[]> countByCharacter(@Param("status") ProductStatus status);
+
 	@EntityGraph(attributePaths = {"category"})
 	List<Product> findByIdIn(Collection<Long> ids);
 

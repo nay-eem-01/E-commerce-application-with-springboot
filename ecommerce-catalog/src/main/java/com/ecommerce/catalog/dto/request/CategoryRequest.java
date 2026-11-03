@@ -32,4 +32,7 @@ public class CategoryRequest {
 	private int sortOrder;
 
 	private boolean active = true;
+
+	/** Announce the category before it has products (storefront shows an early-access signup). */
+	private boolean comingSoon;
 }

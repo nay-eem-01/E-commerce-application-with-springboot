@@ -43,9 +43,21 @@ public record ProductDetailResponse(
 		List<MediaResponse> photos,
 		List<String> spinFrames,
 		MediaResponse storyImage,
-		ProductStatus status
+		ProductStatus status,
+		/** The character collection, or null. */
+		CharacterRef character,
+		/** Filterable attributes, e.g. Capacity: 750 ml. */
+		List<TagResponse> tags,
+		boolean newArrival,
+		/** For a set: the products it holds. */
+		List<ProductSummaryResponse> bundleItems,
+		/** Sets that contain this product, with what buying the set saves ("Complete the set"). */
+		List<SetOffer> sets
 ) {
+	public record SetOffer(ProductSummaryResponse set, java.math.BigDecimal saving) {}
 	public record CategoryRef(String slug, String name) {}
+	public record CharacterRef(String slug, String name, String label) {}
+	public record TagResponse(String group, String value) {}
 
 	public record OptionResponse(Long id, String value, BigDecimal priceDelta, BigDecimal price, StockState stockState, Integer stockLeft, String swatch) {}
 
@@ -54,6 +66,10 @@ public record ProductDetailResponse(
 	public record MediaResponse(String url, String altText) {}
 
 	public static ProductDetailResponse from(Product p) {
+		return from(p, List.of());
+	}
+
+	public static ProductDetailResponse from(Product p, List<Product> setsContaining) {
 		StockState state = p.stockState();
 		List<ProductMedia> media = p.getMedia();
 		return new ProductDetailResponse(
@@ -70,7 +86,14 @@ public record ProductDetailResponse(
 				media.stream().filter(m -> m.getKind() == MediaKind.PHOTO).map(m -> new MediaResponse(m.getUrl(), m.getAltText())).toList(),
 				media.stream().filter(m -> m.getKind() == MediaKind.SPIN_FRAME).map(ProductMedia::getUrl).toList(),
 				media.stream().filter(m -> m.getKind() == MediaKind.STORY).findFirst().map(m -> new MediaResponse(m.getUrl(), m.getAltText())).orElse(null),
-				p.getStatus()
+				p.getStatus(),
+				p.getCharacter() == null ? null
+						: new CharacterRef(p.getCharacter().getSlug(), p.getCharacter().getName(), p.getCharacter().getLabel()),
+				p.getTags().stream().map(t -> new TagResponse(t.getGroup(), t.getValue())).toList(),
+				p.isNewArrival(java.time.Instant.now()),
+				p.getBundleItems().stream().map(b -> ProductSummaryResponse.from(b.getComponent())).toList(),
+				setsContaining.stream().map(set -> new SetOffer(ProductSummaryResponse.from(set),
+						set.getCompareAtPrice() == null ? null : set.getCompareAtPrice().subtract(set.getPrice()))).toList()
 		);
 	}
 
