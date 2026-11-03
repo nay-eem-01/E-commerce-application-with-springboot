@@ -3,7 +3,7 @@
 Phased steps; one small PR each (see `docs/GIT_WORKFLOW.md`). Tick a step in the same PR
 that finishes it.
 
-**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b: 1/2. Phase 3: 0/6. Phase 4: 0/6.
+**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 0/6. Phase 4: 0/6.
 
 ## Phase 1: rewrite the backend (done)
 
@@ -33,7 +33,7 @@ that finishes it.
 ## Phase 2b: storefront v2 (the product-first redesign, "Senpai Supply v2" canvas)
 
 - [x] 2.8 Backend for v2: characters, filter tags and facets, card swatches and new flag, sets, coming-soon categories with early access (V8, V9), launch demo catalog
-- [ ] 2.9 Storefront v2: every screen on phone and desktop as designed (frontend repository)
+- [x] 2.9 Storefront v2: every screen on phone and desktop as designed (frontend repository, `feat/storefront-v2-base`)
 
 ## Phase 3: production readiness
 

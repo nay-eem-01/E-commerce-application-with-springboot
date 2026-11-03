@@ -2,7 +2,7 @@
 
 ## Where we are
 
-Phases 1 and 2 are merged. Step 2.8 (backend for the v2 redesign) is done on `feat/catalog-v2-base`.
+Phases 1 and 2 are merged. Phase 2b (the v2 redesign) is done: step 2.8 on `feat/catalog-v2-base` here, step 2.9 in the frontend repository.
 Phase 1 (backend rewrite): nine-module modular monolith on Spring Boot 3.5 /
 Java 21 / PostgreSQL, every storefront feature from the concept C design has an API, online
 payments are built and switched off, order emails go through a transactional outbox. 136 unit
@@ -22,6 +22,14 @@ Step 2.9: the storefront v2 redesign in the frontend repository (`ecommerce_web`
 - CI is not set up yet; run `./mvnw -B verify` before every push.
 
 ---
+
+## 2026-11-03: Storefront v2 done (step 2.9)
+
+- The frontend implements the v2 design on every screen against this branch's API (`feat/storefront-v2-base` in the
+  frontend repository, seven stacked steps). Its Playwright tests pass against this backend on a fresh development
+  database, and so does `scripts/smoke_test.py`.
+- What the storefront still asks of this backend is in the frontend's `docs/BACKEND_REQUESTS.md`: first the
+  refresh-token grace window, then `stockLeft` on quote lines and the amount due on the order list.
 
 ## 2026-11-03: Backend for the storefront v2 redesign (step 2.8)
 
