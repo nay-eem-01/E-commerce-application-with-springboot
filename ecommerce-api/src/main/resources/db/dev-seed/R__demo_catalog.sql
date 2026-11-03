@@ -56,7 +56,7 @@ INSERT INTO product_tags (product_id, tag_group, tag_value, sort_order) SELECT p
 INSERT INTO products (slug, category_id, character_id, name, maker, summary, description, story, story_quote, spec_line, price, compare_at_price, stock, preorder, preorder_release, deposit, sized, option_name, status, created_by, creation_date)
 SELECT 'kitsune-tritan-bottle', c.id, (SELECT id FROM characters WHERE slug = 'kitsune'), 'Kitsune tritan bottle, 500 ml', 'Senpai Supply', 'The Kitsune bottle in a light kids size, in hot pink.', 'Who it is for: younger fans who want what their older sibling has.
 
-Light enough for a nursery bag.', 'The same fox, a smaller lantern.', 'Small fox, same mask.', '500 ml, light tritan', 790, NULL, 0, TRUE, '2027-01-01'::date, 300, FALSE, NULL, 'ACTIVE', 'SEED', now() - interval '5 hours'
+Light enough for a nursery bag.', 'The same fox, a smaller lantern.', 'Small fox, same mask.', '500 ml, light tritan', 790, NULL, 30, TRUE, '2027-01-01'::date, 300, FALSE, NULL, 'ACTIVE', 'SEED', now() - interval '5 hours'
 FROM categories c WHERE c.slug = 'bottles'
 ON CONFLICT (slug) DO NOTHING;
 INSERT INTO product_facts (product_id, label, fact_value, sort_order) SELECT p.id, v.l, v.v, v.o FROM products p, (VALUES ('Capacity', '500 ml', 0), ('Material', 'Tritan, BPA free', 1), ('Weight', '180 g', 2), ('Age', '6+', 3)) AS v(l, v, o) WHERE p.slug = 'kitsune-tritan-bottle' AND NOT EXISTS (SELECT 1 FROM product_facts f WHERE f.product_id = p.id);
@@ -100,7 +100,7 @@ INSERT INTO product_tags (product_id, tag_group, tag_value, sort_order) SELECT p
 INSERT INTO products (slug, category_id, character_id, name, maker, summary, description, story, story_quote, spec_line, price, compare_at_price, stock, preorder, preorder_release, deposit, sized, option_name, status, created_by, creation_date)
 SELECT 'ronin-sling', c.id, (SELECT id FROM characters WHERE slug = 'ronin'), 'Ronin sling bag, 5 L', 'Senpai Supply', 'A slim cross-body bag with a hidden phone pocket against your back.', 'Who it is for: crowded buses and markets.
 
-The phone pocket opens only from the side that faces you.', 'Wrapped like a sword handle, with the same diagonal stitching.', 'Wrapped like a hilt.', '5 L, cross-body', 1650, NULL, 0, TRUE, '2026-12-01'::date, 500, FALSE, NULL, 'ACTIVE', 'SEED', now() - interval '1 hour'
+The phone pocket opens only from the side that faces you.', 'Wrapped like a sword handle, with the same diagonal stitching.', 'Wrapped like a hilt.', '5 L, cross-body', 1650, NULL, 20, TRUE, '2026-12-01'::date, 500, FALSE, NULL, 'ACTIVE', 'SEED', now() - interval '1 hour'
 FROM categories c WHERE c.slug = 'bags'
 ON CONFLICT (slug) DO NOTHING;
 INSERT INTO product_facts (product_id, label, fact_value, sort_order) SELECT p.id, v.l, v.v, v.o FROM products p, (VALUES ('Capacity', '5 litres', 0), ('Strap', 'Adjustable, 70 to 130 cm', 1), ('Pockets', '3, one hidden', 2), ('Fabric', 'Ripstop nylon', 3)) AS v(l, v, o) WHERE p.slug = 'ronin-sling' AND NOT EXISTS (SELECT 1 FROM product_facts f WHERE f.product_id = p.id);
