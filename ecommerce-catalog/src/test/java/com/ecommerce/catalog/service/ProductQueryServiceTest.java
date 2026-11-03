@@ -31,4 +31,19 @@ class ProductQueryServiceTest {
 		assertThatThrownBy(() -> ProductQueryService.tagGroups(List.of(":Steel"))).isInstanceOf(ResponseException.class);
 		assertThatThrownBy(() -> ProductQueryService.tagGroups(List.of("Material:"))).isInstanceOf(ResponseException.class);
 	}
+
+	@Test
+	void measuredFilterValuesSortBySize() {
+		List<String> values = new java.util.ArrayList<>(List.of("1 L", "750 ml", "500 ml", "600 ml"));
+		values.sort(ProductQueryService::compareAmounts);
+		assertThat(values).containsExactly("500 ml", "600 ml", "750 ml", "1 L");
+	}
+
+	@Test
+	void unmeasuredValuesKeepTheirOrder() {
+		List<String> values = new java.util.ArrayList<>(List.of("S", "M", "L", "XL"));
+		values.sort(ProductQueryService::compareAmounts);
+		assertThat(values).containsExactly("S", "M", "L", "XL");
+		assertThat(ProductQueryService.compareAmounts("Steel", "Tritan")).isZero();
+	}
 }
