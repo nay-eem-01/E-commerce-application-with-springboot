@@ -85,7 +85,8 @@ public class ProductQueryService {
 
 	@Transactional(readOnly = true)
 	public ProductDetailResponse detail(String slug) {
-		return ProductDetailResponse.from(activeBySlug(slug));
+		Product product = activeBySlug(slug);
+		return ProductDetailResponse.from(product, productRepository.findActiveSetsContaining(product.getId()));
 	}
 
 	/** Same category first, then newest from other categories; up to four. */

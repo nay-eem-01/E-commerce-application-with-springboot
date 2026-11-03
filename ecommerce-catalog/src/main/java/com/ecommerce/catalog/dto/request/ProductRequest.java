@@ -109,6 +109,10 @@ public class ProductRequest {
 	@Size(max = 60, message = "A product can have at most 60 images.")
 	private List<MediaRequest> media = new ArrayList<>();
 
+	/** Makes this product a set of these products (in this order). Empty for an ordinary product. */
+	@Size(max = 10, message = "A set can hold at most 10 products.")
+	private List<@jakarta.validation.constraints.NotNull Long> bundleProductIds = new ArrayList<>();
+
 	@Valid
 	@Size(max = 30, message = "A product can have at most 30 tags.")
 	private List<TagRequest> tags = new ArrayList<>();

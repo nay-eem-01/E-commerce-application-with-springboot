@@ -79,6 +79,26 @@ class ProductResponsesTest {
 	}
 
 	@Test
+	void aSetListsWhatItHoldsAndOffersItsSaving() {
+		Product bottle = bottle(Instant.now());
+		Product set = bottle(Instant.now());
+		set.setSlug("kitsune-school-run-set");
+		set.setPrice(new BigDecimal("3990.00"));
+		set.setCompareAtPrice(new BigDecimal("4400.00"));
+		com.ecommerce.catalog.entity.ProductBundleItem item = new com.ecommerce.catalog.entity.ProductBundleItem();
+		item.setBundle(set);
+		item.setComponent(bottle);
+		set.getBundleItems().add(item);
+
+		assertThat(ProductSummaryResponse.from(set).set()).isTrue();
+		assertThat(ProductSummaryResponse.from(bottle).set()).isFalse();
+		assertThat(ProductDetailResponse.from(set).bundleItems()).extracting(ProductSummaryResponse::slug).containsExactly("kitsune-night-bottle");
+		ProductDetailResponse page = ProductDetailResponse.from(bottle, java.util.List.of(set));
+		assertThat(page.sets()).hasSize(1);
+		assertThat(page.sets().get(0).saving()).isEqualByComparingTo("410.00");
+	}
+
+	@Test
 	void theProductPageNamesTheCharacterAndTags() {
 		ProductDetailResponse page = ProductDetailResponse.from(bottle(Instant.now()));
 		assertThat(page.character().label()).isEqualTo("狐");

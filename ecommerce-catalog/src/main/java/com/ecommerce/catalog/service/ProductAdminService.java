@@ -117,6 +117,7 @@ public class ProductAdminService {
 		replaceBox(p, r.getBoxItems());
 		replaceMedia(p, r.getMedia());
 		replaceTags(p, r.getTags());
+		replaceBundle(p, r.getBundleProductIds());
 
 		if (p.hasOptions()) {
 			p.recomputeStock();
@@ -154,6 +155,23 @@ public class ProductAdminService {
 			fact.setValue(req.getValue().trim());
 			fact.setSortOrder(order++);
 			p.getFacts().add(fact);
+		}
+	}
+
+	/** A set holds ordinary products only: no nesting, no itself. */
+	private void replaceBundle(Product p, List<Long> ids) {
+		p.getBundleItems().clear();
+		int order = 0;
+		for (Long id : new java.util.LinkedHashSet<>(ids)) {
+			Product component = productRepository.findById(id).orElseThrow(() -> ResponseException.badRequest(ErrorCode.BUNDLE_ITEM_INVALID));
+			if (component == p || (p.getId() != null && p.getId().equals(component.getId())) || component.isSet()) {
+				throw ResponseException.badRequest(ErrorCode.BUNDLE_ITEM_INVALID);
+			}
+			com.ecommerce.catalog.entity.ProductBundleItem item = new com.ecommerce.catalog.entity.ProductBundleItem();
+			item.setBundle(p);
+			item.setComponent(component);
+			item.setSortOrder(order++);
+			p.getBundleItems().add(item);
 		}
 	}
 

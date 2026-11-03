@@ -130,6 +130,16 @@ public class Product extends AuditModel {
 	@OrderBy("sortOrder ASC, id ASC")
 	private List<ProductTag> tags = new ArrayList<>();
 
+	/** What a set holds; empty for an ordinary product. */
+	@OneToMany(mappedBy = "bundle", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("sortOrder ASC, id ASC")
+	@org.hibernate.annotations.BatchSize(size = 100)
+	private List<ProductBundleItem> bundleItems = new ArrayList<>();
+
+	public boolean isSet() {
+		return !bundleItems.isEmpty();
+	}
+
 	/** Listed in the last 30 days: the card shows "New". */
 	public boolean isNewArrival(java.time.Instant now) {
 		return getCreationDate() != null && getCreationDate().isAfter(now.minus(java.time.Duration.ofDays(30)));
