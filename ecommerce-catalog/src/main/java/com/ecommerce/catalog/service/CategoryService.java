@@ -85,6 +85,7 @@ public class CategoryService {
 		category.setBlurb(blankToNull(request.getBlurb()));
 		category.setSortOrder(request.getSortOrder());
 		category.setActive(request.isActive());
+		category.setComingSoon(request.isComingSoon());
 	}
 
 	private static String blankToNull(String s) {

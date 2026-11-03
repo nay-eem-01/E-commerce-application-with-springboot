@@ -32,6 +32,7 @@ public class ProductAdminService {
 
 	private final ProductRepository productRepository;
 	private final CategoryService categoryService;
+	private final CharacterService characterService;
 
 	@Transactional(readOnly = true)
 	public ProductDetailResponse get(Long id) {
@@ -94,6 +95,7 @@ public class ProductAdminService {
 		}
 		p.setSlug(r.getSlug());
 		p.setCategory(categoryService.find(r.getCategoryId()));
+		p.setCharacter(r.getCharacterId() == null ? null : characterService.find(r.getCharacterId()));
 		p.setName(r.getName().trim());
 		p.setMaker(trim(r.getMaker()));
 		p.setSummary(r.getSummary().trim());
@@ -114,6 +116,7 @@ public class ProductAdminService {
 		replaceFacts(p, r.getFacts());
 		replaceBox(p, r.getBoxItems());
 		replaceMedia(p, r.getMedia());
+		replaceTags(p, r.getTags());
 
 		if (p.hasOptions()) {
 			p.recomputeStock();
@@ -151,6 +154,25 @@ public class ProductAdminService {
 			fact.setValue(req.getValue().trim());
 			fact.setSortOrder(order++);
 			p.getFacts().add(fact);
+		}
+	}
+
+	private void replaceTags(Product p, List<ProductRequest.TagRequest> requests) {
+		p.getTags().clear();
+		int order = 0;
+		java.util.Set<String> seen = new java.util.HashSet<>();
+		for (ProductRequest.TagRequest req : requests) {
+			String group = req.getGroup().trim();
+			String value = req.getValue().trim();
+			if (!seen.add(group.toLowerCase(java.util.Locale.ROOT) + ":" + value.toLowerCase(java.util.Locale.ROOT))) {
+				continue;
+			}
+			com.ecommerce.catalog.entity.ProductTag tag = new com.ecommerce.catalog.entity.ProductTag();
+			tag.setProduct(p);
+			tag.setGroup(group);
+			tag.setValue(value);
+			tag.setSortOrder(order++);
+			p.getTags().add(tag);
 		}
 	}
 

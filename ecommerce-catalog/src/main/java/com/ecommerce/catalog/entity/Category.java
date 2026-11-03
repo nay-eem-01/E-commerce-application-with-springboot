@@ -33,4 +33,8 @@ public class Category extends AuditModel {
 
 	@Column(nullable = false)
 	private boolean active = true;
+
+	/** Announced but not on sale yet: the storefront shows it with an early-access signup. */
+	@Column(name = "coming_soon", nullable = false)
+	private boolean comingSoon;
 }

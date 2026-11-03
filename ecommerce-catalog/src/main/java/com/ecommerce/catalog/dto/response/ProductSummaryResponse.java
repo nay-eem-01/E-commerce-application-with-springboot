@@ -20,8 +20,16 @@ public record ProductSummaryResponse(
 		String preorderRelease,
 		BigDecimal deposit,
 		boolean hasOptions,
-		String thumbnailUrl
+		String thumbnailUrl,
+		/** The character collection's slug, or null. */
+		String characterSlug,
+		/** Listed in the last 30 days. */
+		boolean newArrival,
+		/** Colour options, for the dots on a card and quick add; empty when options are not colours. */
+		java.util.List<Swatch> swatches
 ) {
+	public record Swatch(Long optionId, String value, String swatch, StockState stockState) {}
+
 	public static ProductSummaryResponse from(Product p) {
 		StockState state = p.stockState();
 		return new ProductSummaryResponse(
@@ -29,7 +37,12 @@ public record ProductSummaryResponse(
 				p.getPrice(), p.getCompareAtPrice(), state,
 				state == StockState.LOW_STOCK ? p.getStock() : null,
 				ProductDetailResponse.month(p.getPreorderRelease()), p.isPreorder() ? p.getDeposit() : null,
-				p.hasOptions(), p.thumbnailUrl()
+				p.hasOptions(), p.thumbnailUrl(),
+				p.getCharacter() == null ? null : p.getCharacter().getSlug(),
+				p.isNewArrival(java.time.Instant.now()),
+				p.getOptions().stream().filter(o -> o.getSwatch() != null)
+						.map(o -> new Swatch(o.getId(), o.getValue(), o.getSwatch(), StockState.of(p.isPreorder(), o.getStock())))
+						.toList()
 		);
 	}
 }
