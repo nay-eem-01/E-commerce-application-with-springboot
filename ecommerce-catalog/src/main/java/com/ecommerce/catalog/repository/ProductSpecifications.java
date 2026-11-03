@@ -53,6 +53,12 @@ public final class ProductSpecifications {
 		};
 	}
 
+	/** true: only sets; false: only ordinary products; null: both. */
+	public static Specification<Product> setsOnly(Boolean set) {
+		return (root, q, cb) -> set == null ? null
+				: set ? cb.isNotEmpty(root.get("bundleItems")) : cb.isEmpty(root.get("bundleItems"));
+	}
+
 	public static Specification<Product> inStockOnly(Boolean inStock) {
 		return (root, q, cb) -> Boolean.TRUE.equals(inStock) ? cb.greaterThan(root.get("stock"), 0) : null;
 	}

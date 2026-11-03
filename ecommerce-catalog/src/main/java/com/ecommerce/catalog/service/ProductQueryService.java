@@ -34,9 +34,9 @@ public class ProductQueryService {
 	private final com.ecommerce.catalog.repository.ProductTagRepository productTagRepository;
 
 	public record Filter(String category, String q, Boolean inStock, Boolean preorder, BigDecimal minPrice, BigDecimal maxPrice,
-						 String character, List<String> tags) {
+						 String character, List<String> tags, Boolean set) {
 		public Filter(String category, String q, Boolean inStock, Boolean preorder, BigDecimal minPrice, BigDecimal maxPrice) {
-			this(category, q, inStock, preorder, minPrice, maxPrice, null, List.of());
+			this(category, q, inStock, preorder, minPrice, maxPrice, null, List.of(), null);
 		}
 	}
 
@@ -65,7 +65,30 @@ public class ProductQueryService {
 					.add(new com.ecommerce.catalog.dto.response.FacetsResponse.Value((String) row[1], (Long) row[2]));
 		}
 		return new com.ecommerce.catalog.dto.response.FacetsResponse(groups.entrySet().stream()
-				.map(e -> new com.ecommerce.catalog.dto.response.FacetsResponse.Group(e.getKey(), e.getValue())).toList());
+				.map(e -> new com.ecommerce.catalog.dto.response.FacetsResponse.Group(e.getKey(),
+						e.getValue().stream().sorted((x, y) -> compareAmounts(x.value(), y.value())).toList()))
+				.toList());
+	}
+
+	private static final java.util.regex.Pattern AMOUNT = java.util.regex.Pattern.compile("^\\s*(\\d+(?:\\.\\d+)?)\\s*(ml|l|g|kg|cm|m)?\\b.*", java.util.regex.Pattern.CASE_INSENSITIVE);
+	private static final java.util.Map<String, Double> UNIT = java.util.Map.of("ml", 1d, "l", 1000d, "g", 1d, "kg", 1000d, "cm", 1d, "m", 100d);
+
+	/**
+	 * Measured values sort by size ("500 ml" before "1 L"); anything else keeps the database order
+	 * (so sizes like S, M, L stay as entered).
+	 */
+	static int compareAmounts(String a, String b) {
+		Double x = amount(a), y = amount(b);
+		return x != null && y != null ? Double.compare(x, y) : 0;
+	}
+
+	private static Double amount(String value) {
+		java.util.regex.Matcher m = AMOUNT.matcher(value);
+		if (!m.matches()) {
+			return null;
+		}
+		String unit = m.group(2) == null ? "" : m.group(2).toLowerCase(java.util.Locale.ROOT);
+		return Double.parseDouble(m.group(1)) * UNIT.getOrDefault(unit, 1d);
 	}
 
 	@Transactional(readOnly = true)
@@ -77,7 +100,7 @@ public class ProductQueryService {
 	@Transactional(readOnly = true)
 	public PageResponse<ProductSummaryResponse> find(ProductStatus status, Filter f, int pageNo, int pageSize, String sortBy, AscOrDescType dir) {
 		Specification<Product> spec = Specification.allOf(
-				status(status), category(f.category()), character(f.character()), tags(tagGroups(f.tags())),
+				status(status), category(f.category()), character(f.character()), tags(tagGroups(f.tags())), setsOnly(f.set()),
 				search(f.q()), inStockOnly(f.inStock()), preorderOnly(f.preorder()), minPrice(f.minPrice()), maxPrice(f.maxPrice()));
 		return PageResponse.of(productRepository.findAll(spec, Pages.of(pageNo, pageSize, sortBy, dir, SORTS)),
 				ProductSummaryResponse::from);

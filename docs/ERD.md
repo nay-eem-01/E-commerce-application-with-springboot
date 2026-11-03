@@ -43,7 +43,7 @@ erDiagram
 | Module | Tables |
 |---|---|
 | `ecommerce-user` | `users`, `roles`, `privileges`, `users_roles`, `roles_privileges`, `user_sessions`, `refresh_tokens`, `otp_verifications`, `addresses` |
-| `ecommerce-catalog` | `categories`, `products`, `product_options`, `product_facts`, `product_box_items`, `product_media` |
+| `ecommerce-catalog` | `categories`, `products`, `product_options`, `product_facts`, `product_box_items`, `product_media`, `characters` and `product_tags` (V8), `product_bundle_items` and `early_access_signups` (V9) |
 | `ecommerce-cart` | `cart_items`, `wishlist_items` |
 | `ecommerce-payment` | `payments`, `payment_events` (taken over from order in V6) |
 | `ecommerce-notification` | `notification_outbox` (V7) |

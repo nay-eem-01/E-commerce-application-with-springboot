@@ -51,7 +51,7 @@ public class StorefrontController {
 		return Response.ok("Filters loaded.", productQueryService.facets(category, character));
 	}
 
-	@Operation(summary = "Product list and search. Filter by category or character slug, text, tags (\"Capacity:750 ml\", repeatable), stock, pre-order and price range; sort by creationDate, price or name.")
+	@Operation(summary = "Product list and search. Filter by category or character slug, sets only (set=true), text, tags (\"Capacity:750 ml\", repeatable), stock, pre-order and price range; sort by creationDate, price or name.")
 	@GetMapping("/products")
 	public ResponseEntity<Response> products(
 			@RequestParam(required = false) String category,
@@ -60,6 +60,7 @@ public class StorefrontController {
 			@RequestParam(required = false) @Size(max = 100) String q,
 			@RequestParam(required = false) Boolean inStock,
 			@RequestParam(required = false) Boolean preorder,
+			@RequestParam(required = false) Boolean set,
 			@RequestParam(required = false) BigDecimal minPrice,
 			@RequestParam(required = false) BigDecimal maxPrice,
 			@RequestParam(name = AppConstants.PAGE_NO, defaultValue = AppConstants.PAGE_NO_VALUE) int pageNo,
@@ -67,7 +68,7 @@ public class StorefrontController {
 			@RequestParam(name = AppConstants.SORT_BY, defaultValue = AppConstants.SORT_BY_VALUE) String sortBy,
 			@RequestParam(name = AppConstants.ASC_OR_DESC, defaultValue = AppConstants.ASC_OR_DESC_VALUE) AscOrDescType ascOrDesc) {
 		ProductQueryService.Filter filter = new ProductQueryService.Filter(category, q, inStock, preorder, minPrice, maxPrice,
-				character, tag == null ? java.util.List.of() : tag);
+				character, tag == null ? java.util.List.of() : tag, set);
 		return Response.ok("Products loaded.", productQueryService.list(filter, pageNo, pageSize, sortBy, ascOrDesc));
 	}
 
