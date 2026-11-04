@@ -81,4 +81,8 @@ public final class ErrorCode {
 	public static final String REVIEW_NOT_FOUND = "Review not found.";
 	public static final String REVIEW_NOT_PURCHASED = "You can review products after they are delivered to you.";
 	public static final String REVIEW_EXISTS = "You already reviewed this product. Edit your review instead.";
+
+	// insights
+	public static final String INVALID_PERIOD = "The start date must be on or before the end date.";
+	public static final String PERIOD_TOO_LONG = "Choose a period of 366 days or less.";
 }
