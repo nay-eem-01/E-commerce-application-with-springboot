@@ -122,7 +122,7 @@ should have both routes.
 | Method | Path | Privilege |
 |---|---|---|
 | GET/POST | `/api/admin/categories`, PUT/DELETE `/{id}` | `CATEGORY_WRITE` |
-| GET | `/api/admin/products`, `/api/admin/products/{id}` | `PRODUCT_READ_ALL` |
+| GET | `/api/admin/products`, `/api/admin/products/{id}`, `/api/admin/products/{id}/stock` (exact `{productId, stock, options: [{id, value, stock}]}`) | `PRODUCT_READ_ALL` |
 | POST, PUT `/{id}`, PATCH `/{id}/stock`, DELETE `/{id}` (archive) | `/api/admin/products` | `PRODUCT_WRITE` |
 | GET | `/api/admin/orders`, `/api/admin/orders/{orderNumber}` | `ORDER_READ_ALL` |
 | PATCH | `/api/admin/orders/{orderNumber}/status` `{action: PACK|SHIP|DELIVER|CANCEL|RETURN, note?}` | `ORDER_UPDATE` |

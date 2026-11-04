@@ -3,6 +3,7 @@ package com.ecommerce.catalog.service;
 import com.ecommerce.catalog.dto.request.ProductRequest;
 import com.ecommerce.catalog.dto.request.StockUpdateRequest;
 import com.ecommerce.catalog.dto.response.ProductDetailResponse;
+import com.ecommerce.catalog.dto.response.StockResponse;
 import com.ecommerce.catalog.entity.Product;
 import com.ecommerce.catalog.entity.ProductBoxItem;
 import com.ecommerce.catalog.entity.ProductFact;
@@ -37,6 +38,11 @@ public class ProductAdminService {
 	@Transactional(readOnly = true)
 	public ProductDetailResponse get(Long id) {
 		return ProductDetailResponse.from(find(id));
+	}
+
+	@Transactional(readOnly = true)
+	public StockResponse stock(Long id) {
+		return StockResponse.from(find(id));
 	}
 
 	@Transactional
