@@ -350,6 +350,46 @@ check("sign-out kills the token", s == 200 and s2 == 401, (s, s2))
 s, r = call("GET", "/api/admin/early-access?category=apparel", token=adm)
 check("admin early-access list", s == 200 and r["payload"]["totalElements"] == 1 and r["payload"]["content"][0]["phone"] == "01712345678", r)
 
+# --- insights (needs APP_INSIGHTS_FLUSH_MS=2000 so counters reach the database quickly) ---
+BROWSER = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0 Safari/537.36"}
+s, r = call("GET", "/api/admin/insights/overview", token=other)
+check("customer on insights 403", s == 403, s)
+s, r = call("GET", "/api/products?pageSize=1", headers=BROWSER)
+slug = r["payload"]["content"][0]["slug"]
+time.sleep(4)  # let earlier views reach the database first
+s, r = call("GET", "/api/admin/insights/products?sort=views", token=adm)
+views_before = next(p["views"] for p in r["payload"] if p["slug"] == slug)
+for _ in range(2):
+    call("GET", f"/api/products/{slug}", headers=BROWSER)
+call("GET", f"/api/products/{slug}", headers={"User-Agent": "Googlebot/2.1"})
+call("GET", "/api/products?q=zzqx", headers=BROWSER)
+call("GET", "/api/products?q=zzqx&pageNo=1", headers=BROWSER)
+time.sleep(4)
+s, r = call("GET", "/api/admin/insights/searches", token=adm)
+zz = [t for t in r["payload"]["zeroResults"] if t["term"] == "zzqx"]
+check("zero-result search counted once per first page", s == 200 and zz and zz[0]["searches"] == 1 and zz[0]["zeroResults"] == 1, r)
+s, r = call("GET", "/api/admin/insights/products?sort=views", token=adm)
+row = next(p for p in r["payload"] if p["slug"] == slug)
+check("product views counted, bots skipped", s == 200 and row["views"] == views_before + 2, (views_before, row))
+s, r = call("GET", "/api/admin/orders?pageSize=100", token=adm)
+counted = [o for o in r["payload"]["content"] if o["status"] not in ("CANCELLED", "RETURNED")]
+s, r = call("GET", "/api/admin/insights/overview", token=adm)
+cur = r["payload"]["current"] if s == 200 else {}
+check("overview agrees with the order list", s == 200 and cur["orders"] == len(counted)
+      and cur["units"] == sum(o["itemCount"] for o in counted)
+      and abs(cur["revenue"] + cur["deliveryFees"] - sum(o["total"] for o in counted)) < 0.01
+      and len(r["payload"]["daily"]) == 30 and r["payload"]["previous"]["orders"] == 0, (cur, len(counted)))
+check("cancelled orders counted apart", cur.get("cancelled", 0) >= 2, cur)
+for by in ("CATEGORY", "CHARACTER", "DISTRICT", "PAYMENT_METHOD"):
+    s, r = call("GET", f"/api/admin/insights/breakdown?by={by}", token=adm)
+    check(f"breakdown by {by}", s == 200 and abs(sum(x["revenue"] for x in r["payload"]) - cur["revenue"]) < 0.01, r)
+s, r = call("GET", "/api/admin/insights/signals", token=adm)
+check("signals load", s == 200 and isinstance(r["payload"], list), r)
+s, r = call("GET", "/api/admin/insights/overview?from=2026-12-01&to=2026-11-01", token=adm)
+check("backwards period 400", s == 400 and r["message"] == "The start date must be on or before the end date.", r)
+s, r = call("GET", "/api/admin/insights/products?sort=phone", token=adm)
+check("unknown insights sort 400", s == 400, s)
+
 # errors carry a correlation id and no internals
 s, r = call("GET", "/api/nope", token=adm)
 check("unknown endpoint 404 envelope", s == 404 and r["correlationId"] and r["success"] is False, (s, r))
