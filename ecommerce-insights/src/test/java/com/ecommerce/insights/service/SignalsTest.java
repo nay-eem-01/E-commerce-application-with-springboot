@@ -79,6 +79,7 @@ class SignalsTest {
 		List<SignalResponse> out = signals.build(List.of(), List.of(),
 				List.of(new EarlyAccessCount("apparel", "Apparel", 1), new EarlyAccessCount("cosplay", "Cosplay", 0)));
 		assertThat(out).extracting(SignalResponse::categorySlug).containsExactly("apparel");
+		assertThat(out.getFirst().reason()).isEqualTo("Apparel: 1 early-access signup.");
 	}
 
 	@Test

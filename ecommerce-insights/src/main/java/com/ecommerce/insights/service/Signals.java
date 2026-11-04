@@ -56,7 +56,7 @@ public class Signals {
 		for (EarlyAccessCount e : earlyAccess) {
 			if (e.signups() >= 1) {
 				all.add(new Ranked(new SignalResponse(SignalType.COMING_SOON_DEMAND, "Coming-soon demand",
-						"%s: %d early-access signups.".formatted(e.categoryName(), e.signups()),
+						"%s: %d early-access %s.".formatted(e.categoryName(), e.signups(), e.signups() == 1 ? "signup" : "signups"),
 						null, null, null, e.categorySlug(), e.signups()), -e.signups()));
 			}
 		}

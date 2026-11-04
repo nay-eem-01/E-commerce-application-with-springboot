@@ -33,6 +33,8 @@ public class CatalogTraffic {
 
 	static final int TERM_MAX = 60;
 	static final int KEEP_DAYS = 400;
+	/** New terms per flush window; past it only terms already seen count, so a flood of random terms cannot grow memory. */
+	static final int MAX_TERMS = 5_000;
 	private static final Pattern BOT = Pattern.compile("bot|crawl|spider|slurp|preview|facebookexternalhit|headless",
 			Pattern.CASE_INSENSITIVE);
 	private static final Pattern SEVEN_DIGITS = Pattern.compile("(\\D*\\d){7}");
@@ -62,7 +64,10 @@ public class CatalogTraffic {
 	public void searched(String q, int pageNo, long total, String userAgent) {
 		if (pageNo != 0 || isBot(userAgent)) return;
 		normaliseTerm(q).ifPresent(term -> {
-			TermCount c = searches.get().computeIfAbsent(new TermKey(today(), term), k -> new TermCount());
+			Map<TermKey, TermCount> window = searches.get();
+			TermKey key = new TermKey(today(), term);
+			TermCount c = window.size() < MAX_TERMS ? window.computeIfAbsent(key, k -> new TermCount()) : window.get(key);
+			if (c == null) return;
 			c.searches().increment();
 			if (total == 0) c.zeroResults().increment();
 		});

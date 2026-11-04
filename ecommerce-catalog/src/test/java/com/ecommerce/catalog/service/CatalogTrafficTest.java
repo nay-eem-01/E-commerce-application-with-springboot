@@ -107,4 +107,18 @@ class CatalogTrafficTest {
 		List<ViewRow> second = (List<ViewRow>) views.getAllValues().get(1);
 		assertThat(second).containsExactly(new ViewRow(LocalDate.of(2026, 11, 5), 7L, 3));
 	}
+
+	@Test
+	void newTermsStopAtTheCapButKnownTermsStillCount() {
+		traffic.searched("ramen", 0, 1, CHROME);
+		for (int i = 1; i < CatalogTraffic.MAX_TERMS + 50; i++) traffic.searched("term-" + Integer.toString(i, 36), 0, 1, CHROME);
+		traffic.searched("ramen", 0, 1, CHROME);
+		traffic.flush();
+
+		ArgumentCaptor<List> searches = ArgumentCaptor.forClass(List.class);
+		verify(repository).addSearches(searches.capture());
+		List<SearchRow> rows = this.<SearchRow>captured(searches);
+		assertThat(rows).hasSize(CatalogTraffic.MAX_TERMS);
+		assertThat(rows).contains(new SearchRow(LocalDate.of(2026, 11, 5), "ramen", 2, 0));
+	}
 }
