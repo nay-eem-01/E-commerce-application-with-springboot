@@ -85,4 +85,12 @@ public final class ErrorCode {
 	// insights
 	public static final String INVALID_PERIOD = "The start date must be on or before the end date.";
 	public static final String PERIOD_TOO_LONG = "Choose a period of 366 days or less.";
+
+	// images
+	public static final String IMAGE_REQUIRED = "Choose an image to upload.";
+	public static final String IMAGE_TOO_LARGE = "That image is larger than 5 MB. Export it smaller and try again.";
+	public static final String IMAGE_TYPE_NOT_ALLOWED = "Upload a JPEG, PNG or WebP image.";
+	public static final String IMAGE_TOO_MANY_PIXELS = "That image is too large: keep it under 8000 pixels a side.";
+	public static final String IMAGE_UNREADABLE = "That image could not be read. Save it again as an RGB JPEG or PNG and retry.";
+	public static final String IMAGE_NOT_UPLOADED = "Upload product images here first; images from other sites are not allowed.";
 }

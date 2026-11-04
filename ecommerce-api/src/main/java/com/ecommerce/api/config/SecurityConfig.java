@@ -40,6 +40,7 @@ public class SecurityConfig {
 	private static final String[] PUBLIC_GET = {
 			"/api/categories", "/api/characters", "/api/products", "/api/products/**", "/api/checkout/delivery-options",
 			"/api/payments/*/callback",
+			"/uploads/**", // development image storage; production serves images from S3 / the CDN
 			"/actuator/health", "/actuator/health/**", "/actuator/info",
 			"/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
 	};
