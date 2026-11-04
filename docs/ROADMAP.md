@@ -3,7 +3,7 @@
 Phased steps; one small PR each (see `docs/GIT_WORKFLOW.md`). Tick a step in the same PR
 that finishes it.
 
-**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 0/6. Phase 4: 0/6.
+**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 0/6. Phase 4: 1/8.
 
 ## Phase 1: rewrite the backend (done)
 
@@ -50,6 +50,8 @@ that finishes it.
 - [ ] 4.2 SMS order notifications on the same outbox (email is done in 1.12)
 - [ ] 4.3 Promo codes
 - [ ] 4.4 Courier integration (delivery_app or Steadfast/Pathao) for SHIPPED/DELIVERED updates
-- [ ] 4.5 Admin web UI
+- [x] 4.5a Admin insights backend: view and search counters (V10), catalog/cart/order report interfaces, `ecommerce-insights` with overview, products, signals, breakdowns and searches (`INSIGHTS_READ`)
+- [ ] 4.5b Admin web UI: staff sign-in, insights dashboard, products with stock edit, orders with actions (frontend repository)
+- [ ] 4.5c Admin web UI for the full product editor, categories, characters, users and reviews
 - [ ] 4.6 Gacha corner
 - [ ] 4.7 Sets that take stock from their parts (today a set has its own stock)

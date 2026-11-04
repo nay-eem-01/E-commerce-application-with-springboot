@@ -2,6 +2,7 @@ package com.ecommerce.catalog.dto;
 
 import com.ecommerce.catalog.dto.response.ProductDetailResponse;
 import com.ecommerce.catalog.dto.response.ProductSummaryResponse;
+import com.ecommerce.catalog.dto.response.StockResponse;
 import com.ecommerce.catalog.entity.Category;
 import com.ecommerce.catalog.entity.Product;
 import com.ecommerce.catalog.entity.ProductOption;
@@ -103,5 +104,16 @@ class ProductResponsesTest {
 		ProductDetailResponse page = ProductDetailResponse.from(bottle(Instant.now()));
 		assertThat(page.character().label()).isEqualTo("狐");
 		assertThat(page.tags()).containsExactly(new ProductDetailResponse.TagResponse("Capacity", "750 ml"));
+	}
+
+	@Test
+	void stockResponseShowsExactCountsEvenWhenPlenty() {
+		Product p = bottle(Instant.now());
+		StockResponse stock = StockResponse.from(p);
+		assertThat(stock.stock()).isEqualTo(20);
+		assertThat(stock.options()).containsExactly(new StockResponse.OptionStock(1L, "Petal pink", 20),
+				new StockResponse.OptionStock(2L, "Night navy", 0));
+		// the shop's own response hides a plentiful count
+		assertThat(ProductDetailResponse.from(p).options().getFirst().stockLeft()).isNull();
 	}
 }

@@ -32,6 +32,7 @@
 		<module>ecommerce-notification</module>
 		<module>ecommerce-order</module>
 		<module>ecommerce-review</module>
+		<module>ecommerce-insights</module>
 		<module>ecommerce-api</module>
 	</modules>
 
@@ -84,6 +85,11 @@
 			<dependency>
 				<groupId>com.ecommerce</groupId>
 				<artifactId>ecommerce-review</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.ecommerce</groupId>
+				<artifactId>ecommerce-insights</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 

@@ -1,10 +1,14 @@
 package com.ecommerce.catalog.controller;
 
+import com.ecommerce.catalog.dto.response.ProductDetailResponse;
+import com.ecommerce.catalog.dto.response.ProductSummaryResponse;
+import com.ecommerce.catalog.service.CatalogTraffic;
 import com.ecommerce.catalog.service.CategoryService;
 import com.ecommerce.catalog.service.ProductQueryService;
 import com.ecommerce.common.config.CommonApiResponses;
 import com.ecommerce.common.constant.AppConstants;
 import com.ecommerce.common.enums.AscOrDescType;
+import com.ecommerce.common.model.PageResponse;
 import com.ecommerce.common.model.Response;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,6 +35,7 @@ public class StorefrontController {
 	private final CategoryService categoryService;
 	private final ProductQueryService productQueryService;
 	private final com.ecommerce.catalog.service.CharacterService characterService;
+	private final CatalogTraffic traffic;
 
 	@Operation(summary = "Active categories with how many products each has.")
 	@GetMapping("/categories")
@@ -66,16 +72,22 @@ public class StorefrontController {
 			@RequestParam(name = AppConstants.PAGE_NO, defaultValue = AppConstants.PAGE_NO_VALUE) int pageNo,
 			@RequestParam(name = AppConstants.PAGE_SIZE, defaultValue = AppConstants.PAGE_SIZE_VALUE) int pageSize,
 			@RequestParam(name = AppConstants.SORT_BY, defaultValue = AppConstants.SORT_BY_VALUE) String sortBy,
-			@RequestParam(name = AppConstants.ASC_OR_DESC, defaultValue = AppConstants.ASC_OR_DESC_VALUE) AscOrDescType ascOrDesc) {
+			@RequestParam(name = AppConstants.ASC_OR_DESC, defaultValue = AppConstants.ASC_OR_DESC_VALUE) AscOrDescType ascOrDesc,
+			@RequestHeader(value = "User-Agent", required = false) String userAgent) {
 		ProductQueryService.Filter filter = new ProductQueryService.Filter(category, q, inStock, preorder, minPrice, maxPrice,
 				character, tag == null ? java.util.List.of() : tag, set);
-		return Response.ok("Products loaded.", productQueryService.list(filter, pageNo, pageSize, sortBy, ascOrDesc));
+		PageResponse<ProductSummaryResponse> page = productQueryService.list(filter, pageNo, pageSize, sortBy, ascOrDesc);
+		traffic.searched(q, pageNo, page.totalElements(), userAgent);
+		return Response.ok("Products loaded.", page);
 	}
 
 	@Operation(summary = "The product page: price, stock, options, specs, box contents, photos, 360 frames and story.")
 	@GetMapping("/products/{slug}")
-	public ResponseEntity<Response> product(@PathVariable String slug) {
-		return Response.ok("Product loaded.", productQueryService.detail(slug));
+	public ResponseEntity<Response> product(@PathVariable String slug,
+			@RequestHeader(value = "User-Agent", required = false) String userAgent) {
+		ProductDetailResponse product = productQueryService.detail(slug);
+		traffic.productViewed(product.id(), userAgent);
+		return Response.ok("Product loaded.", product);
 	}
 
 	@Operation(summary = "Up to four products to show under \"Goes well with\".")

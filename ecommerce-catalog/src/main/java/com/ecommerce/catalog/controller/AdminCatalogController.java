@@ -122,6 +122,13 @@ public class AdminCatalogController {
 		return Response.ok("Product loaded.", productAdminService.get(id));
 	}
 
+	@Operation(summary = "Exact stock of a product and of each option, for the stock editor.")
+	@PreAuthorize("hasAuthority('PRODUCT_READ_ALL')")
+	@GetMapping("/products/{id}/stock")
+	public ResponseEntity<Response> stock(@PathVariable Long id) {
+		return Response.ok("Stock loaded.", productAdminService.stock(id));
+	}
+
 	@Operation(summary = "Create a product with its options, facts, box items and images.")
 	@PreAuthorize("hasAuthority('PRODUCT_WRITE')")
 	@PostMapping("/products")

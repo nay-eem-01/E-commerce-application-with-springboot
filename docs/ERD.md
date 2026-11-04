@@ -1,6 +1,6 @@
 # ERD
 
-**Source of truth:** `ecommerce-api/src/main/resources/db/migration/V1..V7`. Hibernate only
+**Source of truth:** `ecommerce-api/src/main/resources/db/migration/V1..V10`. Hibernate only
 validates against it (`ddl-auto=validate`). Every table except the small child/seed tables
 carries the audit columns `created_by, last_modified_by, creation_date, last_modified_date`.
 
@@ -43,12 +43,13 @@ erDiagram
 | Module | Tables |
 |---|---|
 | `ecommerce-user` | `users`, `roles`, `privileges`, `users_roles`, `roles_privileges`, `user_sessions`, `refresh_tokens`, `otp_verifications`, `addresses` |
-| `ecommerce-catalog` | `categories`, `products`, `product_options`, `product_facts`, `product_box_items`, `product_media`, `characters` and `product_tags` (V8), `product_bundle_items` and `early_access_signups` (V9) |
+| `ecommerce-catalog` | `categories`, `products`, `product_options`, `product_facts`, `product_box_items`, `product_media`, `characters` and `product_tags` (V8), `product_bundle_items` and `early_access_signups` (V9), `product_view_daily` and `search_term_daily` (V10) |
 | `ecommerce-cart` | `cart_items`, `wishlist_items` |
 | `ecommerce-payment` | `payments`, `payment_events` (taken over from order in V6) |
 | `ecommerce-notification` | `notification_outbox` (V7) |
 | `ecommerce-order` | `orders`, `order_items`, `order_status_history` |
 | `ecommerce-review` | `reviews` |
+| `ecommerce-insights` | none: reads `CatalogReport`, `DemandReport` and `SalesReport` |
 
 Cross-module links (`cart_items.product_id`, `order_items.product_id`, `orders.user_id`,
 `reviews.product_id`) are plain id fields in Java but real foreign keys in PostgreSQL.
