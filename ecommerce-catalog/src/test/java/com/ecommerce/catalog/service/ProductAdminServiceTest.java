@@ -245,4 +245,15 @@ class ProductAdminServiceTest {
 		assertThat(tag.getSortOrder()).isEqualTo(1);
 		assertThat(p.getBundleItems()).singleElement().isSameAs(item);
 	}
+
+	@Test
+	void slugTakenNamesTheSlugField() {
+		saved();
+		when(products.existsBySlug("kitsune-bottle")).thenReturn(true);
+		ProductRequest copy = toRequest(service.editView(7L));
+		assertThatThrownBy(() -> service.create(copy)).isInstanceOfSatisfying(ResponseException.class, e -> {
+			assertThat(e.getMessage()).isEqualTo(ErrorCode.PRODUCT_SLUG_TAKEN);
+			assertThat(e.getPayload()).isEqualTo(java.util.Map.of("field", "slug"));
+		});
+	}
 }

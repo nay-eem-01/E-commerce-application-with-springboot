@@ -85,7 +85,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		String message = fieldError != null && fieldError.getDefaultMessage() != null
 				? fieldError.getDefaultMessage()
 				: ErrorCode.INVALID_REQUEST;
-		return build(HttpStatus.BAD_REQUEST, message, null);
+		// the field path (e.g. "options[0].stock") lets a form show the message beside its field
+		return build(HttpStatus.BAD_REQUEST, message, fieldError == null ? null : java.util.Map.of("field", fieldError.getField()));
 	}
 
 	@Override

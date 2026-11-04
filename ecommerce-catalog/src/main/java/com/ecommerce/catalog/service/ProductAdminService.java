@@ -57,7 +57,7 @@ public class ProductAdminService {
 	@Transactional
 	public ProductDetailResponse create(ProductRequest request) {
 		if (productRepository.existsBySlug(request.getSlug())) {
-			throw ResponseException.conflict(ErrorCode.PRODUCT_SLUG_TAKEN);
+			throw slugTaken();
 		}
 		Product product = new Product();
 		apply(product, request);
@@ -70,7 +70,7 @@ public class ProductAdminService {
 	public ProductDetailResponse update(Long id, ProductRequest request) {
 		Product product = find(id);
 		if (productRepository.existsBySlugAndIdNot(request.getSlug(), id)) {
-			throw ResponseException.conflict(ErrorCode.PRODUCT_SLUG_TAKEN);
+			throw slugTaken();
 		}
 		apply(product, request);
 		return ProductDetailResponse.from(product);
@@ -98,6 +98,10 @@ public class ProductAdminService {
 	@Transactional
 	public void archive(Long id) {
 		find(id).setStatus(ProductStatus.ARCHIVED);
+	}
+
+	private static ResponseException slugTaken() {
+		return new ResponseException(org.springframework.http.HttpStatus.CONFLICT, ErrorCode.PRODUCT_SLUG_TAKEN, java.util.Map.of("field", "slug"));
 	}
 
 	private Product find(Long id) {
