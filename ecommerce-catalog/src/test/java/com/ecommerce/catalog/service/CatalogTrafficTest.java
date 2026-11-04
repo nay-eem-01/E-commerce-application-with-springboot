@@ -109,16 +109,26 @@ class CatalogTrafficTest {
 	}
 
 	@Test
-	void newTermsStopAtTheCapButKnownTermsStillCount() {
+	void newTermsStopAtTheDailyCapButKnownTermsStillCount() {
 		traffic.searched("ramen", 0, 1, CHROME);
-		for (int i = 1; i < CatalogTraffic.MAX_TERMS + 50; i++) traffic.searched("term-" + Integer.toString(i, 36), 0, 1, CHROME);
+		for (int i = 1; i < CatalogTraffic.MAX_TERMS_PER_DAY + 50; i++) {
+			traffic.searched("term-" + Integer.toString(i, 36), 0, 1, CHROME);
+			if (i % 5_000 == 0) traffic.flush(); // the cap is per day, not per flush window
+		}
 		traffic.searched("ramen", 0, 1, CHROME);
 		traffic.flush();
 
 		ArgumentCaptor<List> searches = ArgumentCaptor.forClass(List.class);
-		verify(repository).addSearches(searches.capture());
-		List<SearchRow> rows = this.<SearchRow>captured(searches);
-		assertThat(rows).hasSize(CatalogTraffic.MAX_TERMS);
-		assertThat(rows).contains(new SearchRow(LocalDate.of(2026, 11, 5), "ramen", 2, 0));
+		verify(repository, times(5)).addSearches(searches.capture());
+		@SuppressWarnings("unchecked")
+		long rows = searches.getAllValues().stream().mapToLong(l -> ((List<SearchRow>) l).size()).sum();
+		// the cap admits MAX_TERMS_PER_DAY distinct terms; "ramen" is in the first and the last window, so one extra row
+		assertThat(rows).isEqualTo(CatalogTraffic.MAX_TERMS_PER_DAY + 1);
+		assertThat(this.<SearchRow>captured(searches)).contains(new SearchRow(LocalDate.of(2026, 11, 5), "ramen", 1, 0));
+	}
+
+	@Test
+	void emailLikeTermsAreDropped() {
+		assertThat(CatalogTraffic.normaliseTerm("rahim@example.com")).isEmpty();
 	}
 }

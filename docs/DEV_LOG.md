@@ -32,7 +32,7 @@ Design `docs/superpowers/specs/2026-11-04-admin-insights-design.md`, plan `docs/
   `/products`, `/signals`, `/breakdown`, `/searches` behind the new `INSIGHTS_READ` privilege (V10 grants it to ADMIN).
 - Catalog counts product page views and first-page searches (with zero-result flag) in memory and adds them to
   `product_view_daily` / `search_term_daily` every minute and on shutdown; crawlers and blank User-Agents are skipped,
-  terms with 7+ digits dropped, at most 5 000 new terms per minute, rows kept 400 days. A failed write keeps the counts.
+  terms with 7+ digits or an `@` dropped, at most 20 000 new terms per day, rows kept 400 days. A failed write keeps the counts.
 - Order (`SalesReport`), cart (`DemandReport`) and catalog (`CatalogReport`) expose read-only aggregate SQL in their
   `api` packages; the new `ecommerce-insights` module merges them and has no tables of its own.
 - Seven signals with thresholds in `app.insights.*`. Dates are Dhaka days (`ShopTime.ZONE`).

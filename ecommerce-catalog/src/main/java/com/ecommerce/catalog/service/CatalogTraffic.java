@@ -33,8 +33,11 @@ public class CatalogTraffic {
 
 	static final int TERM_MAX = 60;
 	static final int KEEP_DAYS = 400;
-	/** New terms per flush window; past it only terms already seen count, so a flood of random terms cannot grow memory. */
-	static final int MAX_TERMS = 5_000;
+	/**
+	 * New distinct terms per shop day (per instance). Past it only terms already seen today count, so a script sending
+	 * random searches cannot grow memory or the table (at most this many rows a day, kept 400 days).
+	 */
+	static final int MAX_TERMS_PER_DAY = 20_000;
 	private static final Pattern BOT = Pattern.compile("bot|crawl|spider|slurp|preview|facebookexternalhit|headless",
 			Pattern.CASE_INSENSITIVE);
 	private static final Pattern SEVEN_DIGITS = Pattern.compile("(\\D*\\d){7}");
@@ -54,6 +57,9 @@ public class CatalogTraffic {
 	// shortcut: an increment racing a flush can land in the map just swapped out and be lost; fine for approximate counts.
 	private final AtomicReference<Map<ViewKey, LongAdder>> views = new AtomicReference<>(new ConcurrentHashMap<>());
 	private final AtomicReference<Map<TermKey, TermCount>> searches = new AtomicReference<>(new ConcurrentHashMap<>());
+	private final AtomicReference<TermsSeen> seen = new AtomicReference<>(new TermsSeen(LocalDate.MIN, ConcurrentHashMap.newKeySet()));
+
+	private record TermsSeen(LocalDate day, java.util.Set<String> terms) {}
 
 	public void productViewed(long productId, String userAgent) {
 		if (isBot(userAgent)) return;
@@ -64,10 +70,9 @@ public class CatalogTraffic {
 	public void searched(String q, int pageNo, long total, String userAgent) {
 		if (pageNo != 0 || isBot(userAgent)) return;
 		normaliseTerm(q).ifPresent(term -> {
-			Map<TermKey, TermCount> window = searches.get();
-			TermKey key = new TermKey(today(), term);
-			TermCount c = window.size() < MAX_TERMS ? window.computeIfAbsent(key, k -> new TermCount()) : window.get(key);
-			if (c == null) return;
+			LocalDate day = today();
+			if (!admit(day, term)) return;
+			TermCount c = searches.get().computeIfAbsent(new TermKey(day, term), k -> new TermCount());
 			c.searches().increment();
 			if (total == 0) c.zeroResults().increment();
 		});
@@ -83,7 +88,7 @@ public class CatalogTraffic {
 			try {
 				repository.addViews(rows);
 			} catch (RuntimeException e) {
-				log.warn("Product view counts not saved, will retry: {}", e.toString());
+				log.warn("Product view counts not saved, will retry: {}", e.getClass().getSimpleName());
 				v.forEach((k, n) -> views.get().computeIfAbsent(k, x -> new LongAdder()).add(n.sum()));
 			}
 		}
@@ -94,7 +99,7 @@ public class CatalogTraffic {
 			try {
 				repository.addSearches(rows);
 			} catch (RuntimeException e) {
-				log.warn("Search counts not saved, will retry: {}", e.toString());
+				log.warn("Search counts not saved, will retry: {}", e.getClass().getSimpleName());
 				s.forEach((k, c) -> {
 					TermCount back = searches.get().computeIfAbsent(k, x -> new TermCount());
 					back.searches().add(c.searches().sum());
@@ -102,6 +107,13 @@ public class CatalogTraffic {
 				});
 			}
 		}
+	}
+
+	/** A term already seen today always counts; a new one only while today's cap has room. */
+	private boolean admit(LocalDate day, String term) {
+		TermsSeen current = seen.updateAndGet(s -> s.day().equals(day) ? s : new TermsSeen(day, ConcurrentHashMap.newKeySet()));
+		if (current.terms().contains(term)) return true;
+		return current.terms().size() < MAX_TERMS_PER_DAY && current.terms().add(term);
 	}
 
 	@Scheduled(cron = "0 30 3 * * *", zone = "Asia/Dhaka")
@@ -113,11 +125,11 @@ public class CatalogTraffic {
 		return userAgent == null || userAgent.isBlank() || BOT.matcher(userAgent).find();
 	}
 
-	/** Lower case, single spaces, at most 60 characters; empty for blank terms and ones that may hold a phone or order number. */
+	/** Lower case, single spaces, at most 60 characters; empty for blank terms and ones that may hold a phone, order number or email. */
 	static Optional<String> normaliseTerm(String q) {
 		if (q == null) return Optional.empty();
 		String term = SPACES.matcher(q.trim()).replaceAll(" ").toLowerCase(Locale.ROOT);
-		if (term.isEmpty() || SEVEN_DIGITS.matcher(term).lookingAt()) return Optional.empty();
+		if (term.isEmpty() || term.indexOf('@') >= 0 || SEVEN_DIGITS.matcher(term).lookingAt()) return Optional.empty();
 		return Optional.of(term.length() > TERM_MAX ? term.substring(0, TERM_MAX).trim() : term);
 	}
 
