@@ -11,8 +11,8 @@ tests and an 84-check end-to-end script pass against a real database.
 
 ## Next up
 
-Step 4.5c in the frontend repository: the product editor with uploads, then categories and characters, then users and
-reviews. Plan: `docs/superpowers/plans/2026-11-04-admin-catalog-editor.md`.
+Step 4.5c in the frontend repository: the product editor is done (`claude/ecstatic-wozniak-r0uwbi`); next categories
+and characters, then users and reviews. Plan: `docs/superpowers/plans/2026-11-04-admin-catalog-editor.md`.
 
 Before production: create the S3 bucket (public read through a bucket policy or a CDN), set `S3_*` and
 `UPLOADS_PUBLIC_BASE_URL`.
@@ -40,6 +40,8 @@ Design `docs/superpowers/specs/2026-11-04-admin-catalog-editor-design.md`, plan
   `S3_ENDPOINT`) or the local disk by property, ported from AgroTrends; the local disk refuses the production profile.
 - Product media must be uploaded here (URLs already on a product stay valid). `GET /api/admin/products/{id}/edit`
   returns the product in the shape `PUT` takes. `GET /api/admin/reviews` for moderation.
+- Validation errors name the field (`payload.field`, e.g. `options[1].stock`) and a slug clash carries `{field: "slug"}`,
+  so the editor shows each message beside its field.
 - `scripts/smoke_test.py`: upload served as WebP, wrong type and 403/401, outside image rejected, every demo product
   saved back unchanged, review list. All pass on a fresh development database.
 
