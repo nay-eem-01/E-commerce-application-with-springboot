@@ -3,7 +3,7 @@
 Phased steps; one small PR each (see `docs/GIT_WORKFLOW.md`). Tick a step in the same PR
 that finishes it.
 
-**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 1/6. Phase 4: 2/8.
+**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 1/6. Phase 4: 3/8.
 
 ## Phase 1: rewrite the backend (done)
 
@@ -52,6 +52,6 @@ that finishes it.
 - [ ] 4.4 Courier integration (delivery_app or Steadfast/Pathao) for SHIPPED/DELIVERED updates
 - [x] 4.5a Admin insights backend: view and search counters (V10), catalog/cart/order report interfaces, `ecommerce-insights` with overview, products, signals, breakdowns and searches (`INSIGHTS_READ`)
 - [x] 4.5b Admin web UI: staff sign-in, insights dashboard, products with stock edit, orders with actions (frontend repository)
-- [ ] 4.5c Admin web UI for the full product editor, categories, characters, users and reviews (backend done: product edit view, uploaded-only media, admin review list)
+- [x] 4.5c Admin web UI for the full product editor, categories, characters, users and reviews (backend: product edit view, uploaded-only media, admin review list, field errors)
 - [ ] 4.6 Gacha corner
 - [ ] 4.7 Sets that take stock from their parts (today a set has its own stock)

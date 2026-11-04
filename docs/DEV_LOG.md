@@ -3,7 +3,7 @@
 ## Where we are
 
 Phases 1, 2 and 2b are merged; the admin insights dashboard (4.5a, 4.5b) is merged. Image uploads (3.4) and the
-backend for the catalog editor (4.5c) are on `claude/ecstatic-wozniak-r0uwbi`.
+catalog editor (4.5c) are on `claude/ecstatic-wozniak-r0uwbi`.
 Phase 1 (backend rewrite): nine-module modular monolith on Spring Boot 3.5 /
 Java 21 / PostgreSQL, every storefront feature from the concept C design has an API, online
 payments are built and switched off, order emails go through a transactional outbox. 136 unit
@@ -11,8 +11,8 @@ tests and an 84-check end-to-end script pass against a real database.
 
 ## Next up
 
-Step 4.5c in the frontend repository: the product editor is done (`claude/ecstatic-wozniak-r0uwbi`); next categories
-and characters, then users and reviews. Plan: `docs/superpowers/plans/2026-11-04-admin-catalog-editor.md`.
+Step 4.5c is done in both repositories (`claude/ecstatic-wozniak-r0uwbi`): product editor with uploads, categories
+and characters, users and reviews. Next: open the PRs, then the remaining Phase 3 steps (CI, Testcontainers). Plan: `docs/superpowers/plans/2026-11-04-admin-catalog-editor.md`.
 
 Before production: create the S3 bucket (public read through a bucket policy or a CDN), set `S3_*` and
 `UPLOADS_PUBLIC_BASE_URL`.
