@@ -73,6 +73,8 @@ the previous code is in `docs/PLAN.md` §3 (findings A1 to A18).
 | Over-exposure in responses | Records only; no password hash, token or other user's contact data; guest tracking returns no address/phone; stock exact counts shown only when low |
 | Error detail leakage | One `GlobalExceptionHandler`; messages from `ErrorCode`; 500 returns a generic message + correlation id; whitelabel/stack traces off |
 | Log injection / sensitive logs | Correlation id accepted only if it matches `[A-Za-z0-9-]{8,64}`; phones/emails masked; codes, tokens and passwords never logged (except the dev-only console SMS, which refuses to run outside development) |
+| Malicious image uploads | Staff only (`PRODUCT_WRITE`), 60 a minute per user; at most 2 conversions at once per instance (a 40 MP decode is about 120 MB); 5 MB (multipart 6/7 MB, parsed lazily after security); type from the first bytes only; width, height and pixel count checked from the header before decoding; JPEG/PNG decoded only by the JDK's pure-Java readers and re-encoded, so only our own pixels reach the native WebP encoder; WebP never decoded on the server; random `<uuid>.webp` names; nothing from the upload (name, content type) is used |
+| Products pointing at outside images | Saved media must be URLs this backend stored (`<UPLOADS_PUBLIC_BASE_URL>/<uuid>.webp`), except ones already on the product |
 | Personal data in analytics | View and search counters store no user, IP or User-Agent; terms with 7+ digits (phone or order numbers) or an `@` (emails) are dropped; failed counter writes log only the exception type (PostgreSQL batch errors inline the values); insights responses are aggregates only, behind `INSIGHTS_READ` |
 | Unbounded queries | `pageSize` clamped to 100; `sortBy` allowlisted (400 otherwise); request lists capped (30 order lines, 50 cart lines) |
 
@@ -107,7 +109,8 @@ the previous code is in `docs/PLAN.md` §3 (findings A1 to A18).
 | S3 | Public tracking: order numbers have 40 random bits and need the matching phone; still rate limit at the reverse proxy too | Proxy rule on `/api/orders/track` at deploy |
 | S4 | No dependency or secret scanning in CI yet | Add CI with `mvn verify`, OWASP dependency-check or Dependabot, gitleaks |
 | S5 | Integration tests run against a local PostgreSQL by hand (`scripts/smoke_test.py`) | Testcontainers in CI (roadmap Phase 3) |
-| S6 | Image upload not built | When built: Tika byte-sniffing, random object keys, size limits, private bucket + CDN |
 | S7 | Online payments are built but untested against live vendor sandboxes (no credentials yet) | Run bKash and SSLCommerz sandbox flows before enabling; add SSLCommerz IPN hash (`verify_sign`) check as defence in depth; rate-limit callbacks at the proxy |
 | S9 | View and search counters are fed by public GETs, so a script can inflate them. Memory and rows are bounded (views by products; at most 20 000 new search terms per day per instance, ≤ 60 chars, kept 400 days; crawler User-Agents skipped) but the numbers can be skewed | Per-IP rate limit on `/api/products` at the proxy; treat insights as approximate |
+| S10 | WebP uploads are stored as sent (never decoded on the server, by design): an animated WebP passes if its canvas is within the limits, and its frames are decoded by shoppers' browsers. Staff only, 5 MB | Re-encode WebP once a decoder runs in a sandbox, or reject the `ANIM` flag if it is ever abused |
+| S11 | The in-memory upload limit (60 a minute) and the conversion permits (2) are per instance | Same as S2: a shared store before a second instance |
 | S8 | Account deletion / data export not built | Needed for privacy requests; design with order snapshots (anonymize, keep financial record) |

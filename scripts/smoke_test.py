@@ -12,7 +12,7 @@ It reads sign-in codes from the development SMS log, so it only works in develop
 Covers storefront, quote, guest and member checkout, idempotency, stock, auth and token
 rotation, ownership (404/403), the admin flow, the order state machine and reviews.
 """
-import json, re, sys, time, uuid, urllib.request, urllib.error
+import json, re, struct, sys, time, uuid, zlib, urllib.request, urllib.error
 
 BASE = "http://localhost:8080"
 LOG = sys.argv[1]
@@ -49,6 +49,32 @@ def get_no_redirect(url):
         return r.status, r.headers.get("Location")
     except urllib.error.HTTPError as e:
         return e.code, e.headers.get("Location")
+
+
+def png(width, height):
+    """A real PNG (stdlib only): a gradient, so the encoder has something to compress."""
+    rows = b"".join(b"\x00" + bytes(c for x in range(width) for c in (x * 255 // width, y * 255 // height, 128))
+                   for y in range(height))
+    chunk = lambda kind, data: struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+def upload(data, token, filename="photo.png"):
+    """POST /api/admin/uploads as multipart; returns (status, body)."""
+    boundary = uuid.uuid4().hex
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\n"
+            f"Content-Type: application/octet-stream\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(BASE + "/api/admin/uploads", data=body, method="POST")
+    req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    if token:
+        req.add_header("Authorization", "Bearer " + token)
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raw = e.read()
+        return e.code, json.loads(raw) if raw else None
 
 
 def check(name, cond, info=""):
@@ -337,9 +363,41 @@ bad = {"slug": "x-test", "categoryId": cat_id, "name": "Test", "summary": "Test 
        "status": "ACTIVE", "media": [{"kind": "PHOTO", "url": "javascript:alert(1)"}]}
 s, r = call("POST", "/api/admin/products", bad, token=adm)
 check("javascript: URL rejected", s == 400, (s, r))
-good = dict(bad, media=[{"kind": "SPIN_FRAME", "url": "https://cdn.example.com/x/01.jpg"}], stock=5)
+# --- image uploads (local storage in development) ---
+s, r = upload(png(1200, 900), adm)
+check("admin uploads a PNG", s == 201 and r["payload"]["url"].endswith(".webp"), (s, r))
+img_url = r["payload"]["url"] if s == 201 else ""
+with urllib.request.urlopen(img_url) as resp:
+    served = resp.read()
+    check("upload is served as WebP", resp.status == 200 and resp.headers["Content-Type"] == "image/webp"
+          and served[8:12] == b"WEBP", resp.headers["Content-Type"])
+s, r = upload(b"just some text", adm, "notes.txt")
+check("text upload rejected", s == 400 and r["message"] == "Upload a JPEG, PNG or WebP image.", (s, r))
+s, r = upload(png(10, 10), other)
+check("customer cannot upload", s == 403, s)
+s, r = upload(png(10, 10), None)
+check("anonymous cannot upload", s == 401, s)
+
+foreign = dict(bad, slug="x-foreign", media=[{"kind": "SPIN_FRAME", "url": "https://cdn.example.com/x/01.jpg"}], stock=5)
+s, r = call("POST", "/api/admin/products", foreign, token=adm)
+check("image from another host rejected", s == 400 and r["message"].startswith("Upload product images here first"), (s, r))
+good = dict(bad, media=[{"kind": "SPIN_FRAME", "url": img_url}], stock=5)
 s, r = call("POST", "/api/admin/products", good, token=adm)
-check("admin creates product", s == 201 and r["payload"]["spinFrames"] == ["https://cdn.example.com/x/01.jpg"], r)
+check("admin creates product with an uploaded image", s == 201 and r["payload"]["spinFrames"] == [img_url], r)
+new_id = r["payload"]["id"] if s == 201 else None
+
+# --- the editor's load-and-save: every product saves back unchanged (tags, sets, option stock) ---
+s, r = call("GET", "/api/admin/products?pageSize=100", token=adm)
+unchanged = []
+for p in r["payload"]["content"]:
+    _, e = call("GET", f"/api/admin/products/{p['id']}/edit", token=adm)
+    before = e["payload"]
+    s, saved = call("PUT", f"/api/admin/products/{p['id']}", {k: v for k, v in before.items() if k != "id"}, token=adm)
+    _, after = call("GET", f"/api/admin/products/{p['id']}/edit", token=adm)
+    unchanged.append(s == 200 and after["payload"] == before)
+check("every product saves back unchanged", unchanged and all(unchanged), unchanged)
+s, r = call("GET", f"/api/admin/products/{new_id}/edit", token=other)
+check("customer cannot open the edit view", s == 403, s)
 
 # sign out
 s, r = call("POST", "/api/auth/sign-out", token=tok)
@@ -349,6 +407,15 @@ check("sign-out kills the token", s == 200 and s2 == 401, (s, s2))
 # early-access list is staff-only and shows the canonical number once
 s, r = call("GET", "/api/admin/early-access?category=apparel", token=adm)
 check("admin early-access list", s == 200 and r["payload"]["totalElements"] == 1 and r["payload"]["content"][0]["phone"] == "01712345678", r)
+
+# --- review moderation list ---
+s, r = call("GET", "/api/admin/reviews", token=adm)
+check("admin review list", s == 200 and r["payload"]["totalElements"] >= 1
+      and all("phone" not in x and "userId" not in x for x in r["payload"]["content"]), r)
+s, r = call("GET", "/api/admin/reviews?status=HIDDEN", token=adm)
+check("review list filters by status", s == 200 and all(x["status"] == "HIDDEN" for x in r["payload"]["content"]), r)
+s, r = call("GET", "/api/admin/reviews", token=other)
+check("customer cannot list reviews", s == 403, s)
 
 # --- insights (needs APP_INSIGHTS_FLUSH_MS=2000 so counters reach the database quickly) ---
 BROWSER = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0 Safari/537.36"}

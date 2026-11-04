@@ -24,7 +24,7 @@ Swagger has every field. Breaking changes are recorded in `docs/DEV_LOG.md`.
 
 | Status | Meaning for the UI |
 |---|---|
-| 400 | Show `message` next to the form |
+| 400 | Show `message` next to the form; a validation error's `payload` is `{field}` with its path (`name`, `options[0].stock`), and a slug clash (409) carries `{field: "slug"}` |
 | 401 | Not signed in / session ended → refresh once, else go to sign-in |
 | 403 | Signed in but not allowed (or admin must change password first) |
 | 404 | Not found, or private and not yours |
@@ -122,18 +122,29 @@ should have both routes.
 | Method | Path | Privilege |
 |---|---|---|
 | GET/POST | `/api/admin/categories`, PUT/DELETE `/{id}` | `CATEGORY_WRITE` |
-| GET | `/api/admin/products`, `/api/admin/products/{id}`, `/api/admin/products/{id}/stock` (exact `{productId, stock, options: [{id, value, stock}]}`) | `PRODUCT_READ_ALL` |
+| GET | `/api/admin/products`, `/api/admin/products/{id}`, `/api/admin/products/{id}/stock` (exact `{productId, stock, options: [{id, value, stock}]}`), `/api/admin/products/{id}/edit` (the product in the exact shape `PUT` takes: `categoryId`, `characterId`, exact option stock, `media: [{kind, url, altText}]` in order, `bundleProductIds`, `tags`) | `PRODUCT_READ_ALL` |
+| POST | `/api/admin/uploads` (multipart `file`: JPEG, PNG or WebP, at most 5 MB) → 201 `{url}` of a stored WebP; 60 a minute per user | `PRODUCT_WRITE` |
 | POST, PUT `/{id}`, PATCH `/{id}/stock`, DELETE `/{id}` (archive) | `/api/admin/products` | `PRODUCT_WRITE` |
 | GET | `/api/admin/orders`, `/api/admin/orders/{orderNumber}` | `ORDER_READ_ALL` |
 | PATCH | `/api/admin/orders/{orderNumber}/status` `{action: PACK|SHIP|DELIVER|CANCEL|RETURN, note?}` | `ORDER_UPDATE` |
 | GET | `/api/admin/users?q=` | `USER_READ` |
 | PUT | `/api/admin/users/{id}/status` `{status: ACTIVE|BANNED}` | `USER_UPDATE` |
+| GET | `/api/admin/reviews?status=PUBLISHED|HIDDEN&productId=` newest first: `{id, productId, productName, authorName, rating, body, status, createdAt}` (display name only, no contact details) | `REVIEW_MODERATE` |
 | PATCH | `/api/admin/reviews/{id}/status` `{status: PUBLISHED|HIDDEN}` | `REVIEW_MODERATE` |
 | GET/POST | `/api/admin/characters`, PUT/DELETE `/{id}` | `CATEGORY_WRITE` |
 | GET | `/api/admin/early-access?category=` | `USER_READ` |
 | GET | `/api/admin/notifications?status=PENDING|SENT|FAILED&orderNumber=` | `NOTIFICATION_MANAGE` |
 | POST | `/api/admin/notifications/{id}/retry` (FAILED only) | `NOTIFICATION_MANAGE` |
 | GET | `/api/admin/insights/overview`, `/products?sort=&dir=`, `/signals`, `/breakdown?by=`, `/searches` (all take `from`, `to`) | `INSIGHTS_READ` |
+
+### Product images
+
+Upload first, then put the returned URL in the product's `media`. JPEG and PNG are converted to WebP (longest side at
+most 2 400 px, never scaled up); WebP is stored as sent. Rejected with 400: empty, over 5 MB, another format (checked
+from the bytes, not the name), over 8 000 px a side or 40 megapixels, unreadable (CMYK JPEG, truncated). A product's
+media must be URLs uploaded here, except URLs already on that product (400 otherwise). In development images are
+stored on disk and served at `/uploads/<uuid>.webp`; in production from S3 (or R2 / MinIO) under
+`UPLOADS_PUBLIC_BASE_URL`, cached for a year (names are never reused).
 
 ### Admin insights (`/api/admin/insights`, `INSIGHTS_READ`)
 

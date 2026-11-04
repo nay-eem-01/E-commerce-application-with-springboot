@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.ecommerce.review.enums.ReviewStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -65,6 +66,17 @@ public class ReviewController {
 	public ResponseEntity<Response> delete(@PathVariable Long reviewId) {
 		reviewService.delete(reviewId);
 		return Response.ok("Review deleted.");
+	}
+
+	@Operation(summary = "Reviews for moderation, newest first; filter by status and product.", security = @SecurityRequirement(name = "jwtToken"))
+	@PreAuthorize("hasAuthority('REVIEW_MODERATE')")
+	@GetMapping("/api/admin/reviews")
+	public ResponseEntity<Response> adminList(
+			@RequestParam(required = false) ReviewStatus status,
+			@RequestParam(required = false) Long productId,
+			@RequestParam(name = AppConstants.PAGE_NO, defaultValue = AppConstants.PAGE_NO_VALUE) int pageNo,
+			@RequestParam(name = AppConstants.PAGE_SIZE, defaultValue = AppConstants.PAGE_SIZE_VALUE) int pageSize) {
+		return Response.ok("Reviews loaded.", reviewService.adminList(status, productId, pageNo, pageSize));
 	}
 
 	@Operation(summary = "Hide or publish a review (moderation).", security = @SecurityRequirement(name = "jwtToken"))

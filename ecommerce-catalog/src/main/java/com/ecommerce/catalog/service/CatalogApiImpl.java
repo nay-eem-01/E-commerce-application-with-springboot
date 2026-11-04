@@ -104,6 +104,14 @@ public class CatalogApiImpl implements CatalogApi {
 
 	@Override
 	@Transactional(readOnly = true)
+	public java.util.Map<Long, String> names(Collection<Long> productIds) {
+		if (productIds.isEmpty()) return java.util.Map.of();
+		return productRepository.findByIdIn(productIds).stream()
+				.collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getName()));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<ProductSummaryResponse> summaries(Collection<Long> productIds) {
 		if (productIds.isEmpty()) {
 			return List.of();

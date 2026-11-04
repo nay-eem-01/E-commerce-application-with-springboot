@@ -122,6 +122,13 @@ public class AdminCatalogController {
 		return Response.ok("Product loaded.", productAdminService.get(id));
 	}
 
+	@Operation(summary = "One product in the exact shape PUT /products/{id} takes (ids, exact stock, media with kind), for the editor.")
+	@PreAuthorize("hasAuthority('PRODUCT_READ_ALL')")
+	@GetMapping("/products/{id}/edit")
+	public ResponseEntity<Response> productForEdit(@PathVariable Long id) {
+		return Response.ok("Product loaded.", productAdminService.editView(id));
+	}
+
 	@Operation(summary = "Exact stock of a product and of each option, for the stock editor.")
 	@PreAuthorize("hasAuthority('PRODUCT_READ_ALL')")
 	@GetMapping("/products/{id}/stock")

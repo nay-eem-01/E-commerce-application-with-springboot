@@ -3,6 +3,7 @@ package com.ecommerce.catalog.service;
 import com.ecommerce.catalog.dto.request.ProductRequest;
 import com.ecommerce.catalog.dto.request.StockUpdateRequest;
 import com.ecommerce.catalog.dto.response.ProductDetailResponse;
+import com.ecommerce.catalog.dto.response.ProductEditResponse;
 import com.ecommerce.catalog.dto.response.StockResponse;
 import com.ecommerce.catalog.entity.Product;
 import com.ecommerce.catalog.entity.ProductBoxItem;
@@ -10,6 +11,7 @@ import com.ecommerce.catalog.entity.ProductFact;
 import com.ecommerce.catalog.entity.ProductMedia;
 import com.ecommerce.catalog.entity.ProductOption;
 import com.ecommerce.catalog.enums.ProductStatus;
+import com.ecommerce.catalog.media.ImageStorage;
 import com.ecommerce.catalog.repository.ProductRepository;
 import com.ecommerce.common.constant.ErrorCode;
 import com.ecommerce.common.exception.ResponseException;
@@ -34,10 +36,17 @@ public class ProductAdminService {
 	private final ProductRepository productRepository;
 	private final CategoryService categoryService;
 	private final CharacterService characterService;
+	private final ImageStorage imageStorage;
 
 	@Transactional(readOnly = true)
 	public ProductDetailResponse get(Long id) {
 		return ProductDetailResponse.from(find(id));
+	}
+
+	/** The product in the shape the editor saves, so a load-and-save never loses stock or ids. */
+	@Transactional(readOnly = true)
+	public ProductEditResponse editView(Long id) {
+		return ProductEditResponse.from(find(id));
 	}
 
 	@Transactional(readOnly = true)
@@ -48,7 +57,7 @@ public class ProductAdminService {
 	@Transactional
 	public ProductDetailResponse create(ProductRequest request) {
 		if (productRepository.existsBySlug(request.getSlug())) {
-			throw ResponseException.conflict(ErrorCode.PRODUCT_SLUG_TAKEN);
+			throw slugTaken();
 		}
 		Product product = new Product();
 		apply(product, request);
@@ -61,7 +70,7 @@ public class ProductAdminService {
 	public ProductDetailResponse update(Long id, ProductRequest request) {
 		Product product = find(id);
 		if (productRepository.existsBySlugAndIdNot(request.getSlug(), id)) {
-			throw ResponseException.conflict(ErrorCode.PRODUCT_SLUG_TAKEN);
+			throw slugTaken();
 		}
 		apply(product, request);
 		return ProductDetailResponse.from(product);
@@ -89,6 +98,10 @@ public class ProductAdminService {
 	@Transactional
 	public void archive(Long id) {
 		find(id).setStatus(ProductStatus.ARCHIVED);
+	}
+
+	private static ResponseException slugTaken() {
+		return new ResponseException(org.springframework.http.HttpStatus.CONFLICT, ErrorCode.PRODUCT_SLUG_TAKEN, java.util.Map.of("field", "slug"));
 	}
 
 	private Product find(Long id) {
@@ -164,25 +177,37 @@ public class ProductAdminService {
 		}
 	}
 
-	/** A set holds ordinary products only: no nesting, no itself. */
+	/**
+	 * A set holds ordinary products only: no nesting, no itself. Rows for products already in the set are kept (only
+	 * their position changes): clearing and re-adding them makes Hibernate insert before it deletes, which breaks
+	 * product_bundle_items_unique.
+	 */
 	private void replaceBundle(Product p, List<Long> ids) {
-		p.getBundleItems().clear();
+		List<com.ecommerce.catalog.entity.ProductBundleItem> keep = new java.util.ArrayList<>();
 		int order = 0;
 		for (Long id : new java.util.LinkedHashSet<>(ids)) {
 			Product component = productRepository.findById(id).orElseThrow(() -> ResponseException.badRequest(ErrorCode.BUNDLE_ITEM_INVALID));
 			if (component == p || (p.getId() != null && p.getId().equals(component.getId())) || component.isSet()) {
 				throw ResponseException.badRequest(ErrorCode.BUNDLE_ITEM_INVALID);
 			}
-			com.ecommerce.catalog.entity.ProductBundleItem item = new com.ecommerce.catalog.entity.ProductBundleItem();
-			item.setBundle(p);
-			item.setComponent(component);
+			com.ecommerce.catalog.entity.ProductBundleItem item = p.getBundleItems().stream()
+					.filter(b -> b.getComponent() == component || (component.getId() != null && component.getId().equals(b.getComponent().getId())))
+					.findFirst().orElseGet(() -> {
+						com.ecommerce.catalog.entity.ProductBundleItem created = new com.ecommerce.catalog.entity.ProductBundleItem();
+						created.setBundle(p);
+						created.setComponent(component);
+						return created;
+					});
 			item.setSortOrder(order++);
-			p.getBundleItems().add(item);
+			keep.add(item);
 		}
+		p.getBundleItems().retainAll(keep);
+		keep.stream().filter(b -> !p.getBundleItems().contains(b)).forEach(p.getBundleItems()::add);
 	}
 
+	/** Same group and value (any case) keeps its row, as for the set above: product_tags_unique. */
 	private void replaceTags(Product p, List<ProductRequest.TagRequest> requests) {
-		p.getTags().clear();
+		List<com.ecommerce.catalog.entity.ProductTag> keep = new java.util.ArrayList<>();
 		int order = 0;
 		java.util.Set<String> seen = new java.util.HashSet<>();
 		for (ProductRequest.TagRequest req : requests) {
@@ -191,13 +216,17 @@ public class ProductAdminService {
 			if (!seen.add(group.toLowerCase(java.util.Locale.ROOT) + ":" + value.toLowerCase(java.util.Locale.ROOT))) {
 				continue;
 			}
-			com.ecommerce.catalog.entity.ProductTag tag = new com.ecommerce.catalog.entity.ProductTag();
+			com.ecommerce.catalog.entity.ProductTag tag = p.getTags().stream()
+					.filter(t -> t.getGroup().equalsIgnoreCase(group) && t.getValue().equalsIgnoreCase(value))
+					.findFirst().orElseGet(com.ecommerce.catalog.entity.ProductTag::new);
 			tag.setProduct(p);
 			tag.setGroup(group);
 			tag.setValue(value);
 			tag.setSortOrder(order++);
-			p.getTags().add(tag);
+			keep.add(tag);
 		}
+		p.getTags().retainAll(keep);
+		keep.stream().filter(t -> !p.getTags().contains(t)).forEach(p.getTags()::add);
 	}
 
 	private void replaceBox(Product p, List<String> items) {
@@ -212,7 +241,19 @@ public class ProductAdminService {
 		}
 	}
 
+	/**
+	 * Images must be ones uploaded here, so a product never points at a host we do not control. A URL already on this
+	 * product is kept as it is (products saved before uploads existed still save).
+	 */
 	private void replaceMedia(Product p, List<ProductRequest.MediaRequest> requests) {
+		java.util.Set<String> existing = new java.util.HashSet<>();
+		p.getMedia().forEach(m -> existing.add(m.getUrl()));
+		for (ProductRequest.MediaRequest req : requests) {
+			String url = req.getUrl().trim();
+			if (!existing.contains(url) && !imageStorage.isStored(url)) {
+				throw ResponseException.badRequest(ErrorCode.IMAGE_NOT_UPLOADED);
+			}
+		}
 		p.getMedia().clear();
 		int order = 0;
 		for (ProductRequest.MediaRequest req : requests) {
