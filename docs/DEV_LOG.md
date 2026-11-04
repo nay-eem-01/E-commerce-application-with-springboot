@@ -2,7 +2,8 @@
 
 ## Where we are
 
-Phases 1 and 2 are merged. Phase 2b (the v2 redesign) is done: step 2.8 on `feat/catalog-v2-base` here, step 2.9 in the frontend repository.
+Phases 1, 2 and 2b are merged; the admin insights dashboard (4.5a, 4.5b) is merged. Image uploads (3.4) and the
+backend for the catalog editor (4.5c) are on `claude/ecstatic-wozniak-r0uwbi`.
 Phase 1 (backend rewrite): nine-module modular monolith on Spring Boot 3.5 /
 Java 21 / PostgreSQL, every storefront feature from the concept C design has an API, online
 payments are built and switched off, order emails go through a transactional outbox. 136 unit
@@ -10,7 +11,11 @@ tests and an 84-check end-to-end script pass against a real database.
 
 ## Next up
 
-Step 4.5b: admin screens in the frontend repository (dashboard, products with stock edit, orders) against the insights API.
+Step 4.5c in the frontend repository: the product editor with uploads, then categories and characters, then users and
+reviews. Plan: `docs/superpowers/plans/2026-11-04-admin-catalog-editor.md`.
+
+Before production: create the S3 bucket (public read through a bucket policy or a CDN), set `S3_*` and
+`UPLOADS_PUBLIC_BASE_URL`.
 
 ## Open items
 
@@ -22,6 +27,36 @@ Step 4.5b: admin screens in the frontend repository (dashboard, products with st
 - CI is not set up yet; run `./mvnw -B verify` before every push.
 
 ---
+
+## 2026-11-04: Image uploads and editor backend (steps 3.4 and 4.5c backend)
+
+Design `docs/superpowers/specs/2026-11-04-admin-catalog-editor-design.md`, plan
+`docs/superpowers/plans/2026-11-04-admin-catalog-editor.md`.
+
+**Done**
+- `POST /api/admin/uploads` (`PRODUCT_WRITE`, 60 a minute): JPEG, PNG or WebP up to 5 MB, type from the bytes,
+  dimensions from the header before decoding (8 000 px a side, 40 MP); JPEG and PNG become lossy WebP (quality 0.82,
+  at most 2 400 px) through `webp-imageio`; WebP stored as sent. `ImageStorage` is S3 (AWS SDK v2; R2 / MinIO through
+  `S3_ENDPOINT`) or the local disk by property, ported from AgroTrends; the local disk refuses the production profile.
+- Product media must be uploaded here (URLs already on a product stay valid). `GET /api/admin/products/{id}/edit`
+  returns the product in the shape `PUT` takes. `GET /api/admin/reviews` for moderation.
+- `scripts/smoke_test.py`: upload served as WebP, wrong type and 403/401, outside image rejected, every demo product
+  saved back unchanged, review list. All pass on a fresh development database.
+
+**Decisions**
+- Server-side WebP (Safari cannot encode WebP in the browser). New dependencies: `software.amazon.awssdk:s3`,
+  `com.github.usefulness:webp-imageio` (Apache-2.0, bundled libwebp) and its `kotlin-stdlib`.
+- Upload code lives in the catalog module (its only user).
+
+**Bugs found and fixed before commit**
+- Uploads answered 500 in the running app: multipart was switched off globally. It is on with limits and lazy
+  parsing; regression test in `ApplicationPropertiesTest`.
+- Saving any tagged product or set answered 409 (also on `main`): tags and set items were cleared and re-added, and
+  Hibernate inserted before deleting, tripping the unique constraints. Existing rows are kept now; regression test.
+- Lossless WebP sizes were not read (one minimum header length for every kind).
+
+**Known limitations**
+- Uploads nobody uses stay in the bucket. No `srcset` sizes.
 
 ## 2026-11-04: Admin insights backend (step 4.5a)
 

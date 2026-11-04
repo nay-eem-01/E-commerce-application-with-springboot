@@ -3,7 +3,7 @@
 Phased steps; one small PR each (see `docs/GIT_WORKFLOW.md`). Tick a step in the same PR
 that finishes it.
 
-**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 0/6. Phase 4: 1/8.
+**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 1/6. Phase 4: 2/8.
 
 ## Phase 1: rewrite the backend (done)
 
@@ -40,7 +40,7 @@ that finishes it.
 - [ ] 3.1 CI: `./mvnw verify`, dependency scanning, gitleaks
 - [ ] 3.2 Testcontainers integration tests (migrations, checkout transaction, ownership) replacing the manual script in CI
 - [ ] 3.3 Real SMS provider behind `SmsSender`
-- [ ] 3.4 Image upload: byte-sniffing, random keys, S3 + CDN, admin upload endpoint
+- [x] 3.4 Image upload: byte-sniffing, random keys, S3 + CDN, admin upload endpoint (WebP conversion; local disk in development)
 - [ ] 3.5 Dockerfile, Compose for staging, deploy checklist, backups
 - [ ] 3.6 Redis-backed `RateLimiter` (prerequisite for a second instance)
 
@@ -51,7 +51,7 @@ that finishes it.
 - [ ] 4.3 Promo codes
 - [ ] 4.4 Courier integration (delivery_app or Steadfast/Pathao) for SHIPPED/DELIVERED updates
 - [x] 4.5a Admin insights backend: view and search counters (V10), catalog/cart/order report interfaces, `ecommerce-insights` with overview, products, signals, breakdowns and searches (`INSIGHTS_READ`)
-- [ ] 4.5b Admin web UI: staff sign-in, insights dashboard, products with stock edit, orders with actions (frontend repository)
-- [ ] 4.5c Admin web UI for the full product editor, categories, characters, users and reviews
+- [x] 4.5b Admin web UI: staff sign-in, insights dashboard, products with stock edit, orders with actions (frontend repository)
+- [ ] 4.5c Admin web UI for the full product editor, categories, characters, users and reviews (backend done: product edit view, uploaded-only media, admin review list)
 - [ ] 4.6 Gacha corner
 - [ ] 4.7 Sets that take stock from their parts (today a set has its own stock)
