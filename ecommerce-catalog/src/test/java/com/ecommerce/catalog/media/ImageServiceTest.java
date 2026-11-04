@@ -115,4 +115,19 @@ class ImageServiceTest {
 				.isInstanceOfSatisfying(ResponseException.class, e -> assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS));
 		service.upload(small, 8L); // another staff member is not affected
 	}
+
+	/**
+	 * Regression: four 40-megapixel uploads at once ran a 512 MB server out of memory (each decode is about 120 MB).
+	 * Conversions now take a permit: at most CONVERSIONS_AT_ONCE run, the rest wait.
+	 */
+	@Test
+	void conversionsWaitForAPermit() throws Exception {
+		service.converting.acquire(ImageService.CONVERSIONS_AT_ONCE);
+		java.util.concurrent.CompletableFuture<String> upload =
+				java.util.concurrent.CompletableFuture.supplyAsync(() -> service.upload(Images.encode(40, 30, "png"), 1L));
+		Thread.sleep(300);
+		assertThat(upload).isNotDone();
+		service.converting.release(ImageService.CONVERSIONS_AT_ONCE);
+		assertThat(upload.get(10, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo("https://cdn.senpai.shop/x.webp");
+	}
 }

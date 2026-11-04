@@ -56,6 +56,9 @@ Design `docs/superpowers/specs/2026-11-04-admin-catalog-editor-design.md`, plan
 - Saving any tagged product or set answered 409 (also on `main`): tags and set items were cleared and re-added, and
   Hibernate inserted before deleting, tripping the unique constraints. Existing rows are kept now; regression test.
 - Lossless WebP sizes were not read (one minimum header length for every kind).
+- Found in review, on a 512 MB heap: four 40-megapixel uploads at once ran out of memory (500, and the whole app at
+  risk). Conversions take one of two permits now; six at once all succeed. Regression test.
+- Found in review: a file over the multipart limit answered 413 "The request is invalid"; it says the 5 MB limit now.
 
 **Known limitations**
 - Uploads nobody uses stay in the bucket. No `srcset` sizes.

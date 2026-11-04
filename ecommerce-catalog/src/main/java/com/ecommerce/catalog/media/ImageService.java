@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Iterator;
+import java.util.concurrent.Semaphore;
 
 /**
  * Product images: JPEG, PNG or WebP up to 5 MB in, a public WebP URL out. JPEG and PNG are decoded by the JDK's own
@@ -39,9 +40,12 @@ public class ImageService {
 	static final long LIMIT_PIXELS = 40_000_000L;
 	static final float QUALITY = 0.82f;
 	static final int UPLOADS_PER_MINUTE = 60;
+	/** A 40 MP decode takes about 120 MB; more at once ran a 512 MB server out of memory. Per instance. */
+	static final int CONVERSIONS_AT_ONCE = 2;
 
 	private final ImageStorage storage;
 	private final RateLimiter rateLimiter;
+	final Semaphore converting = new Semaphore(CONVERSIONS_AT_ONCE, true);
 
 	public String upload(byte[] bytes, long userId) {
 		// bounds bucket spend if a staff token leaks
@@ -55,7 +59,12 @@ public class ImageService {
 			checkSize(size[0], size[1]);
 			webp = bytes;
 		} else {
-			webp = toWebp(bytes, type);
+			converting.acquireUninterruptibly();
+			try {
+				webp = toWebp(bytes, type);
+			} finally {
+				converting.release();
+			}
 		}
 		String url = storage.store(webp);
 		log.info("Image uploaded by user {}: {} bytes {} -> {} bytes webp", userId, bytes.length, type, webp.length);

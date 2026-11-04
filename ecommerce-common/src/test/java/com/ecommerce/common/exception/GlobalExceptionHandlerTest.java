@@ -40,4 +40,14 @@ class GlobalExceptionHandlerTest {
 		assertThat(body.getMessage()).isEqualTo("Enter a name.");
 		assertThat(body.getPayload()).isEqualTo(Map.of("field", "name"));
 	}
+
+	/** Regression: a file over the multipart limit answered 413 "The request is invalid", which told staff nothing. */
+	@Test
+	void tooLargeUploadSaysSo() {
+		ResponseEntity<Object> response = new GlobalExceptionHandler().handleMaxUploadSizeExceededException(
+				new org.springframework.web.multipart.MaxUploadSizeExceededException(6 * 1024 * 1024), new HttpHeaders(),
+				HttpStatus.PAYLOAD_TOO_LARGE, new ServletWebRequest(new MockHttpServletRequest()));
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
+		assertThat(((Response) response.getBody()).getMessage()).isEqualTo(com.ecommerce.common.constant.ErrorCode.IMAGE_TOO_LARGE);
+	}
 }

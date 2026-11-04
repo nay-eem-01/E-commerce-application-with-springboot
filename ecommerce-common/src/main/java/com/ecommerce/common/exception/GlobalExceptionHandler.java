@@ -89,6 +89,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return build(HttpStatus.BAD_REQUEST, message, fieldError == null ? null : java.util.Map.of("field", fieldError.getField()));
 	}
 
+	/** Over the multipart limit: only image uploads take files, so say what the limit is. */
+	@Override
+	protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+			@NonNull org.springframework.web.multipart.MaxUploadSizeExceededException e, @NonNull HttpHeaders headers,
+			@NonNull HttpStatusCode status, @NonNull WebRequest request) {
+		return build(HttpStatus.PAYLOAD_TOO_LARGE, ErrorCode.IMAGE_TOO_LARGE, null);
+	}
+
 	@Override
 	protected ResponseEntity<Object> handleHandlerMethodValidationException(
 			@NonNull HandlerMethodValidationException e, @NonNull HttpHeaders headers,
