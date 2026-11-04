@@ -10,7 +10,7 @@ tests and an 84-check end-to-end script pass against a real database.
 
 ## Next up
 
-Step 2.9: the storefront v2 redesign in the frontend repository (`ecommerce_web`).
+Step 4.5b: admin screens in the frontend repository (dashboard, products with stock edit, orders) against the insights API.
 
 ## Open items
 
@@ -22,6 +22,33 @@ Step 2.9: the storefront v2 redesign in the frontend repository (`ecommerce_web`
 - CI is not set up yet; run `./mvnw -B verify` before every push.
 
 ---
+
+## 2026-11-04: Admin insights backend (step 4.5a)
+
+Design `docs/superpowers/specs/2026-11-04-admin-insights-design.md`, plan `docs/superpowers/plans/2026-11-04-admin-insights.md`.
+
+**Done**
+- Leads here means demand signals for stock and marketing, not contact lists. `GET /api/admin/insights/overview`,
+  `/products`, `/signals`, `/breakdown`, `/searches` behind the new `INSIGHTS_READ` privilege (V10 grants it to ADMIN).
+- Catalog counts product page views and first-page searches (with zero-result flag) in memory and adds them to
+  `product_view_daily` / `search_term_daily` every minute and on shutdown; crawlers and blank User-Agents are skipped,
+  terms with 7+ digits dropped, at most 5 000 new terms per minute, rows kept 400 days. A failed write keeps the counts.
+- Order (`SalesReport`), cart (`DemandReport`) and catalog (`CatalogReport`) expose read-only aggregate SQL in their
+  `api` packages; the new `ecommerce-insights` module merges them and has no tables of its own.
+- Seven signals with thresholds in `app.insights.*`. Dates are Dhaka days (`ShopTime.ZONE`).
+- 27 new unit tests; `scripts/smoke_test.py` checks the counters, that the overview matches the order list, every
+  breakdown sums to the revenue, 403/400 cases. Passes against PostgreSQL 16 on a fresh development database.
+
+**Decisions**
+- Report queries are plain SQL with `JdbcTemplate` inside each module (rows, not entities).
+- The product snapshot carries every product with an `active` flag: the table and signals show active ones; sales of
+  archived products still count in totals and breakdowns.
+- Category and character breakdowns roll up per-product sales, so an order with two products of the group counts
+  twice in `orders` (units and revenue are exact).
+
+**Known limitations**
+- Views are approximate (bots posing as browsers, refetches). Demand is members only.
+- The product table is merged in memory (cap `app.insights.product-limit`, 2 000).
 
 ## 2026-11-03: Storefront v2 done (step 2.9)
 

@@ -133,6 +133,32 @@ should have both routes.
 | GET | `/api/admin/early-access?category=` | `USER_READ` |
 | GET | `/api/admin/notifications?status=PENDING|SENT|FAILED&orderNumber=` | `NOTIFICATION_MANAGE` |
 | POST | `/api/admin/notifications/{id}/retry` (FAILED only) | `NOTIFICATION_MANAGE` |
+| GET | `/api/admin/insights/overview`, `/products?sort=&dir=`, `/signals`, `/breakdown?by=`, `/searches` (all take `from`, `to`) | `INSIGHTS_READ` |
+
+### Admin insights (`/api/admin/insights`, `INSIGHTS_READ`)
+
+Demand signals for stock and marketing decisions. Every endpoint takes `from` and `to` (ISO dates, Dhaka days, both
+inclusive; default the last 30 days ending today; at most 366 days; `from > to` is 400). Aggregates only: no phone,
+email or other personal data.
+
+- A **counted order** was placed in the period and is not `CANCELLED` or `RETURNED`. **Revenue** is its subtotal
+  (no delivery fee). A buyer (by order phone) is **new** when their first counted order ever is in the period.
+- **Views** are successful `GET /api/products/{slug}`; **searches** are `GET /api/products?q=` on page 0. Requests
+  without a User-Agent or from crawlers are not counted. Counts reach the database within a minute and are approximate.
+- **Demand** (`wishlists`, `cartUnits`, `cartMembers`) is today's snapshot of signed-in members; guest carts are not seen.
+
+| GET | Payload |
+|---|---|
+| `/overview` | `{from, to, current, previous, daily: [{day, orders, revenue}]}`; totals are `{orders, units, revenue, averageOrder\|null, deliveryFees, cancelled, cancelRate (0..1), returned, newBuyers, returningBuyers, views, searches, zeroResultSearches}`; `previous` is the same length just before; `daily` has every day |
+| `/products?sort=revenue\|units\|views\|conversion\|wishlists\|daysLeft\|stock&dir=desc\|asc` | every active product: `{id, slug, name, category, character, preorder, stock, views, orders, units, revenue, conversion (orders/views)\|null, wishlists, cartUnits, cartMembers, daysLeft\|null, signals: [type]}`; nulls sort last |
+| `/signals` | up to 30 `{type, title, reason, productId, productSlug, term, categorySlug, value}` ranked by type, then by `value` |
+| `/breakdown?by=CATEGORY\|CHARACTER\|DISTRICT\|PAYMENT_METHOD` | `[{name, orders, units, revenue, share (0..1)}]` by revenue; for category and character an order with two products of the group counts twice in `orders` |
+| `/searches` | `{top: [{term, searches, zeroResults}], zeroResults: [...]}`, 20 each |
+
+Signal types (thresholds in `app.insights.*`): `RESTOCK_SOON` (≤ 14 days of stock left), `WANTED_SOLD_OUT` (sold out,
+≥ 3 saved or in carts), `LOW_STOCK_HIGH_DEMAND` (saved or in carts ≥ stock), `LOOKED_NOT_BOUGHT` (≥ 50 views, < 1 %
+converting), `SLOW_MOVER` (in stock, none sold, older than the period), `SEARCH_GAP` (a term found nothing ≥ 3 times),
+`COMING_SOON_DEMAND` (early-access signups). Pre-orders skip the restock, sold-out and slow-mover signals.
 
 ## Flows the storefront needs
 
