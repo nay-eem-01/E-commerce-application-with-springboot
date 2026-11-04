@@ -125,6 +125,28 @@ class InsightsServiceTest {
 	}
 
 	@Test
+	void conversionDescendingAlsoPutsUnknownLast() {
+		when(catalog.products()).thenReturn(List.of(snapshot(1, 5), snapshot(2, 5), snapshot(3, 5)));
+		when(catalog.views(any(), any())).thenReturn(Map.of(2L, 100L, 3L, 10L));
+		when(sales.byProduct(any(), any())).thenReturn(List.of(new ProductSales(2L, 1, 1, new BigDecimal("1.00")),
+				new ProductSales(3L, 1, 1, new BigDecimal("1.00"))));
+		assertThat(service.products(NOV, "conversion", AscOrDescType.desc)).extracting(ProductInsightResponse::id).containsExactly(3L, 2L, 1L);
+		assertThat(service.products(NOV, "conversion", AscOrDescType.asc)).extracting(ProductInsightResponse::id).containsExactly(2L, 3L, 1L);
+	}
+
+	@Test
+	void previousTotalsComeFromThePeriodJustBefore() {
+		Period oct = NOV.previous();
+		when(sales.totals(NOV.start(), NOV.endExclusive())).thenReturn(new SalesTotals(4, 4, new BigDecimal("400.00"), BigDecimal.ZERO, 0, 0, 4, 0));
+		when(sales.totals(oct.start(), oct.endExclusive())).thenReturn(new SalesTotals(2, 2, new BigDecimal("200.00"), BigDecimal.ZERO, 0, 0, 2, 0));
+		when(catalog.totals(oct.from(), oct.to())).thenReturn(new TrafficTotals(9, 0, 0));
+		OverviewResponse o = service.overview(NOV);
+		assertThat(o.current().orders()).isEqualTo(4);
+		assertThat(o.previous().orders()).isEqualTo(2);
+		assertThat(o.previous().views()).isEqualTo(9);
+	}
+
+	@Test
 	void demandIsMergedIntoTheRow() {
 		when(catalog.products()).thenReturn(List.of(snapshot(1, 5)));
 		when(catalog.views(any(), any())).thenReturn(Map.of(1L, 200L));

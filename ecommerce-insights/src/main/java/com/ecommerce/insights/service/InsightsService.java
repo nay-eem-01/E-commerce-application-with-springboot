@@ -45,14 +45,15 @@ public class InsightsService {
 	static final int TERM_LIMIT = 20;
 	private static final ProductDemand NO_DEMAND = new ProductDemand(null, 0, 0, 0);
 
-	private static final Map<String, Comparator<ProductInsightResponse>> SORTS = Map.of(
-			"revenue", Comparator.comparing(ProductInsightResponse::revenue),
-			"units", Comparator.comparingLong(ProductInsightResponse::units),
-			"views", Comparator.comparingLong(ProductInsightResponse::views),
-			"conversion", nullsLast(ProductInsightResponse::conversion),
-			"wishlists", Comparator.comparingLong(ProductInsightResponse::wishlists),
-			"daysLeft", nullsLast(ProductInsightResponse::daysLeft),
-			"stock", Comparator.comparingInt(ProductInsightResponse::stock));
+	/** Sort keys; null (no views, nothing sold) means unknown and always sorts last. */
+	private static final Map<String, Function<ProductInsightResponse, BigDecimal>> SORTS = Map.of(
+			"revenue", ProductInsightResponse::revenue,
+			"units", r -> BigDecimal.valueOf(r.units()),
+			"views", r -> BigDecimal.valueOf(r.views()),
+			"conversion", ProductInsightResponse::conversion,
+			"wishlists", r -> BigDecimal.valueOf(r.wishlists()),
+			"daysLeft", ProductInsightResponse::daysLeft,
+			"stock", r -> BigDecimal.valueOf(r.stock()));
 
 	private final CatalogReport catalog;
 	private final DemandReport demand;
@@ -70,9 +71,10 @@ public class InsightsService {
 
 	/** Every active product, sorted; nulls (no views, nothing sold) last in either direction. */
 	public List<ProductInsightResponse> products(Period p, String sort, AscOrDescType dir) {
-		Comparator<ProductInsightResponse> cmp = SORTS.get(sort);
-		if (cmp == null) throw ResponseException.badRequest(ErrorCode.INVALID_SORT_FIELD);
-		if (dir == AscOrDescType.desc) cmp = reversedKeepingNullsLast(sort, cmp);
+		Function<ProductInsightResponse, BigDecimal> key = SORTS.get(sort);
+		if (key == null) throw ResponseException.badRequest(ErrorCode.INVALID_SORT_FIELD);
+		Comparator<ProductInsightResponse> cmp = Comparator.comparing(key, Comparator.nullsLast(
+				dir == AscOrDescType.desc ? Comparator.<BigDecimal>reverseOrder() : Comparator.<BigDecimal>naturalOrder()));
 		return candidates(p).stream().map(c -> c.row().withSignals(signals.forProduct(c.row(), c.createdAt(), p)))
 				.sorted(cmp.thenComparing(ProductInsightResponse::name)).toList();
 	}
@@ -167,17 +169,5 @@ public class InsightsService {
 
 	private static BigDecimal ratio(BigDecimal part, BigDecimal whole) {
 		return whole.signum() == 0 ? BigDecimal.ZERO.setScale(4) : part.divide(whole, 4, RoundingMode.HALF_UP);
-	}
-
-	private static Comparator<ProductInsightResponse> nullsLast(Function<ProductInsightResponse, BigDecimal> key) {
-		return Comparator.comparing(key, Comparator.nullsLast(Comparator.naturalOrder()));
-	}
-
-	private static Comparator<ProductInsightResponse> reversedKeepingNullsLast(String sort, Comparator<ProductInsightResponse> cmp) {
-		return switch (sort) {
-			case "conversion" -> Comparator.comparing(ProductInsightResponse::conversion, Comparator.nullsLast(Comparator.reverseOrder()));
-			case "daysLeft" -> Comparator.comparing(ProductInsightResponse::daysLeft, Comparator.nullsLast(Comparator.reverseOrder()));
-			default -> cmp.reversed();
-		};
 	}
 }
