@@ -24,9 +24,8 @@ Swagger has every field. Breaking changes are recorded in `docs/DEV_LOG.md`.
 
 | Status | Meaning for the UI |
 |---|---|
-| 400 | Show `message` next to the form |
+| 400 | Show `message` next to the form; a validation error's `payload` is `{field}` with its path (`name`, `options[0].stock`), and a slug clash (409) carries `{field: "slug"}` |
 | 401 | Not signed in / session ended → refresh once, else go to sign-in |
-| 400 | Validation failed: `message` is the first field's sentence, `payload` is `{field}` with its path (`name`, `options[0].stock`) |
 | 403 | Signed in but not allowed (or admin must change password first) |
 | 404 | Not found, or private and not yours |
 | 409 | Conflict: out of stock, duplicate, illegal order step |
