@@ -5,7 +5,7 @@ import com.ecommerce.insights.enums.SignalType;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** {@code conversion} = orders / views (null without views); {@code daysLeft} null when nothing sold. */
+/** {@code conversion} = orders / views (null without views or with more orders than views); {@code daysLeft} null when nothing sold. */
 public record ProductInsightResponse(Long id, String slug, String name, String category, String character, boolean preorder,
 									 int stock, long views, long orders, long units, BigDecimal revenue, BigDecimal conversion,
 									 long wishlists, long cartUnits, long cartMembers, BigDecimal daysLeft,

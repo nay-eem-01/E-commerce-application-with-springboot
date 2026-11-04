@@ -99,8 +99,9 @@ public class InsightsService {
 				catalog.topZeroResultSearches(p.from(), p.to(), TERM_LIMIT));
 	}
 
+	/** orders / views; null without views, and null when orders outnumber views (views were missed, so the ratio means nothing). */
 	static BigDecimal conversion(long orders, long views) {
-		return views == 0 ? null : BigDecimal.valueOf(orders).divide(BigDecimal.valueOf(views), 4, RoundingMode.HALF_UP);
+		return views == 0 || orders > views ? null : BigDecimal.valueOf(orders).divide(BigDecimal.valueOf(views), 4, RoundingMode.HALF_UP);
 	}
 
 	/** stock / (units per day), one decimal; null when nothing sold. */

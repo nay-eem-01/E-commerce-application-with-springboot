@@ -150,7 +150,7 @@ email or other personal data.
 | GET | Payload |
 |---|---|
 | `/overview` | `{from, to, current, previous, daily: [{day, orders, revenue}]}`; totals are `{orders, units, revenue, averageOrder\|null, deliveryFees, cancelled, cancelRate (0..1), returned, newBuyers, returningBuyers, views, searches, zeroResultSearches}`; `previous` is the same length just before; `daily` has every day |
-| `/products?sort=revenue\|units\|views\|conversion\|wishlists\|daysLeft\|stock&dir=desc\|asc` | every active product: `{id, slug, name, category, character, preorder, stock, views, orders, units, revenue, conversion (orders/views)\|null, wishlists, cartUnits, cartMembers, daysLeft\|null, signals: [type]}`; nulls sort last |
+| `/products?sort=revenue\|units\|views\|conversion\|wishlists\|daysLeft\|stock&dir=desc\|asc` | every active product: `{id, slug, name, category, character, preorder, stock, views, orders, units, revenue, conversion (orders/views; null without views or when orders outnumber views)\|null, wishlists, cartUnits, cartMembers, daysLeft\|null, signals: [type]}`; nulls sort last |
 | `/signals` | up to 30 `{type, title, reason, productId, productSlug, term, categorySlug, value}` ranked by type, then by `value` |
 | `/breakdown?by=CATEGORY\|CHARACTER\|DISTRICT\|PAYMENT_METHOD` | `[{name, orders, units, revenue, share (0..1)}]` by revenue; for category and character an order with two products of the group counts twice in `orders` |
 | `/searches` | `{top: [{term, searches, zeroResults}], zeroResults: [...]}`, 20 each |

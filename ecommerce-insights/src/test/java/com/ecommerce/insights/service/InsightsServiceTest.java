@@ -139,6 +139,14 @@ class InsightsServiceTest {
 	}
 
 	@Test
+	void conversionIsUnknownWhenOrdersOutnumberViews() {
+		// found on real data: 3 orders, 1 counted view showed "300%"
+		assertThat(InsightsService.conversion(3, 1)).isNull();
+		assertThat(InsightsService.conversion(1, 1)).isEqualByComparingTo("1.0000");
+		assertThat(InsightsService.conversion(0, 0)).isNull();
+	}
+
+	@Test
 	void unknownSortIs400() {
 		assertThatThrownBy(() -> service.products(NOV, "phone", AscOrDescType.desc))
 				.isInstanceOf(ResponseException.class).hasMessage(ErrorCode.INVALID_SORT_FIELD);
