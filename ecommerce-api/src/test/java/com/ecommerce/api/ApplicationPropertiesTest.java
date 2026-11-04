@@ -11,8 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ApplicationPropertiesTest {
 
 	private static Properties load() throws Exception {
+		return load("/application.properties");
+	}
+
+	private static Properties load(String file) throws Exception {
 		Properties p = new Properties();
-		try (InputStream in = ApplicationPropertiesTest.class.getResourceAsStream("/application.properties")) {
+		try (InputStream in = ApplicationPropertiesTest.class.getResourceAsStream(file)) {
 			p.load(in);
 		}
 		return p;
@@ -51,5 +55,16 @@ class ApplicationPropertiesTest {
 		assertThat(p.getProperty("app.payment.bkash.app-secret")).isEqualTo("${BKASH_APP_SECRET:}");
 		assertThat(p.getProperty("app.payment.sslcommerz.store-password")).isEqualTo("${SSLCOMMERZ_STORE_PASSWORD:}");
 		assertThat(p.getProperty("app.storage.s3.secret-access-key")).isEqualTo("${S3_SECRET_ACCESS_KEY:}");
+	}
+
+	/**
+	 * In production images must go to a bucket and be served from a real URL: without these the app would start with
+	 * every image address pointing at localhost. Missing values fail startup, as APP_BASE_URL does.
+	 */
+	@Test
+	void productionRequiresABucketAndAPublicImageUrl() throws Exception {
+		Properties p = load("/application-production.properties");
+		assertThat(p.getProperty("app.storage.s3.bucket")).isEqualTo("${S3_BUCKET}");
+		assertThat(p.getProperty("app.storage.public-base-url")).isEqualTo("${UPLOADS_PUBLIC_BASE_URL}");
 	}
 }
