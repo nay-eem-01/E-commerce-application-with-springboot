@@ -29,6 +29,19 @@ class ApplicationPropertiesTest {
 		assertThat(p.getProperty("spring.mail.properties.mail.smtp.starttls.enable")).isEqualTo("${MAIL_SMTP_STARTTLS:true}");
 	}
 
+	/**
+	 * Regression: multipart was switched off globally, so the image upload endpoint answered 500 ("no multi-part
+	 * configuration") in the running app while its unit tests passed. Parts are parsed lazily, after security.
+	 */
+	@Test
+	void multipartIsOnForUploadsWithLimitsAndLazyParsing() throws Exception {
+		Properties p = load();
+		assertThat(p.getProperty("spring.servlet.multipart.enabled")).isEqualTo("true");
+		assertThat(p.getProperty("spring.servlet.multipart.resolve-lazily")).isEqualTo("true");
+		assertThat(p.getProperty("spring.servlet.multipart.max-file-size")).isEqualTo("6MB");
+		assertThat(p.getProperty("spring.servlet.multipart.max-request-size")).isEqualTo("7MB");
+	}
+
 	@Test
 	void secretsHaveNoDefaults() throws Exception {
 		Properties p = load();
@@ -37,5 +50,6 @@ class ApplicationPropertiesTest {
 		assertThat(p.getProperty("spring.mail.password")).isEqualTo("${MAIL_PASSWORD:}");
 		assertThat(p.getProperty("app.payment.bkash.app-secret")).isEqualTo("${BKASH_APP_SECRET:}");
 		assertThat(p.getProperty("app.payment.sslcommerz.store-password")).isEqualTo("${SSLCOMMERZ_STORE_PASSWORD:}");
+		assertThat(p.getProperty("app.storage.s3.secret-access-key")).isEqualTo("${S3_SECRET_ACCESS_KEY:}");
 	}
 }
