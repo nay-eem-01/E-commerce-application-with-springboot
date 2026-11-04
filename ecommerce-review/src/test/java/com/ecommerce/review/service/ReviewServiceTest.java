@@ -45,4 +45,34 @@ class ReviewServiceTest {
 		assertThat(ReviewService.displayName("  ")).isEqualTo("Verified buyer");
 		assertThat(ReviewService.displayName(null)).isEqualTo("Verified buyer");
 	}
+
+	@Test
+	void adminListFiltersByStatusAndNamesArchivedProducts() {
+		com.ecommerce.review.entity.Review r = new com.ecommerce.review.entity.Review();
+		org.springframework.test.util.ReflectionTestUtils.setField(r, "id", 31L);
+		org.springframework.test.util.ReflectionTestUtils.setField(r, "creationDate", java.time.Instant.parse("2026-11-01T10:00:00Z"));
+		r.setProductId(4L);
+		r.setUserId(9L);
+		r.setRating(2);
+		r.setBody("Arrived scratched.");
+		r.setAuthorName("Tasnim R.");
+		r.setStatus(com.ecommerce.review.enums.ReviewStatus.PUBLISHED);
+		when(reviews.adminSearch(org.mockito.ArgumentMatchers.eq(com.ecommerce.review.enums.ReviewStatus.PUBLISHED),
+				org.mockito.ArgumentMatchers.isNull(), any()))
+				.thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(r)));
+		// the product was archived since; the review list still names it
+		when(catalog.names(java.util.Set.of(4L))).thenReturn(java.util.Map.of(4L, "Kitsune school-run set"));
+
+		var page = service.adminList(com.ecommerce.review.enums.ReviewStatus.PUBLISHED, null, 0, 20);
+
+		assertThat(page.content()).singleElement().satisfies(a -> {
+			assertThat(a.id()).isEqualTo(31L);
+			assertThat(a.productName()).isEqualTo("Kitsune school-run set");
+			assertThat(a.rating()).isEqualTo(2);
+			assertThat(a.createdAt()).isEqualTo(java.time.Instant.parse("2026-11-01T10:00:00Z"));
+		});
+		// staff see who wrote it by display name only: no user id or contact details in the response
+		assertThat(com.ecommerce.review.dto.response.AdminReviewResponse.class.getRecordComponents())
+				.extracting(java.lang.reflect.RecordComponent::getName).doesNotContain("userId", "phone", "email");
+	}
 }

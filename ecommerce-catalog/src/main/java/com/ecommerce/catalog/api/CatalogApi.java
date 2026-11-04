@@ -25,4 +25,7 @@ public interface CatalogApi {
 	List<ProductSummaryResponse> summaries(Collection<Long> productIds);
 
 	Optional<Long> activeProductIdBySlug(String slug);
+
+	/** Product names by id, any status (for staff lists that outlive a product's sale). Unknown ids are left out. */
+	java.util.Map<Long, String> names(Collection<Long> productIds);
 }

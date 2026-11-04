@@ -10,12 +10,14 @@ import com.ecommerce.common.security.CurrentUser;
 import com.ecommerce.common.web.Pages;
 import com.ecommerce.order.api.PurchaseVerifier;
 import com.ecommerce.review.dto.request.ReviewRequest;
+import com.ecommerce.review.dto.response.AdminReviewResponse;
 import com.ecommerce.review.dto.response.ReviewPageResponse;
 import com.ecommerce.review.dto.response.ReviewResponse;
 import com.ecommerce.review.entity.Review;
 import com.ecommerce.review.enums.ReviewStatus;
 import com.ecommerce.review.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -102,6 +105,15 @@ public class ReviewService {
 	}
 
 	/** "Tasnim Rahman" -> "Tasnim R."; no name -> "Verified buyer". */
+	/** Moderation list, newest first, with each product's name (archived products too). */
+	@Transactional(readOnly = true)
+	public PageResponse<AdminReviewResponse> adminList(ReviewStatus status, Long productId, int pageNo, int pageSize) {
+		Page<Review> page = reviewRepository.adminSearch(status, productId,
+				Pages.of(pageNo, pageSize, AppConstants.SORT_BY_VALUE, AscOrDescType.desc, SORTS));
+		Map<Long, String> names = catalogApi.names(page.getContent().stream().map(Review::getProductId).collect(Collectors.toSet()));
+		return PageResponse.of(page, r -> AdminReviewResponse.from(r, names.get(r.getProductId())));
+	}
+
 	public static String displayName(String fullName) {
 		if (fullName == null || fullName.isBlank()) {
 			return "Verified buyer";

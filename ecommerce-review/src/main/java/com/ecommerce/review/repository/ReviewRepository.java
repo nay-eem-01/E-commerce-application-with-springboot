@@ -13,6 +13,10 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
+	/** Moderation list; a null status or product means "any". */
+	@Query("select r from Review r where (:status is null or r.status = :status) and (:productId is null or r.productId = :productId)")
+	Page<Review> adminSearch(@Param("status") ReviewStatus status, @Param("productId") Long productId, Pageable pageable);
+
 	Page<Review> findByProductIdAndStatus(Long productId, ReviewStatus status, Pageable pageable);
 
 	boolean existsByProductIdAndUserId(Long productId, Long userId);
