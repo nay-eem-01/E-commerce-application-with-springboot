@@ -1,5 +1,12 @@
 # Dev log
 
+## 2026-11-22 · Shopper authentication
+
+- **Done:** Added email verification, password reset and Google sign-in for shoppers.
+- **Decisions:** Used single-use hashed links and the existing Spring sessions. Google never links staff accounts.
+- **Breaking API changes:** SMS sign-in is available only in development and test.
+- **Known limitations:** Configure SMTP and the Google web client before launch. Existing phone-only accounts require a separate migration if they need access.
+
 ## Where we are
 
 Phases 1, 2 and 2b are merged; the admin insights dashboard (4.5a, 4.5b) is merged. Image uploads (3.4) and the

@@ -3,7 +3,7 @@
 Phased steps; one small PR each (see `docs/GIT_WORKFLOW.md`). Tick a step in the same PR
 that finishes it.
 
-**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 1/6. Phase 4: 3/8.
+**Progress:** Phase 1 done (12/12). Phase 2 done (7/7). Phase 2b done (2/2). Phase 3: 2/7. Phase 4: 3/8.
 
 ## Phase 1: rewrite the backend (done)
 
@@ -39,10 +39,12 @@ that finishes it.
 
 - [ ] 3.1 CI: `./mvnw verify`, dependency scanning, gitleaks
 - [ ] 3.2 Testcontainers integration tests (migrations, checkout transaction, ownership) replacing the manual script in CI
-- [ ] 3.3 Real SMS provider behind `SmsSender`
+- [ ] 3.3 Real SMS provider behind `SmsSender` (on hold)
 - [x] 3.4 Image upload: byte-sniffing, random keys, S3 + CDN, admin upload endpoint (WebP conversion; local disk in development)
 - [ ] 3.5 Dockerfile, Compose for staging, deploy checklist, backups
 - [ ] 3.6 Redis-backed `RateLimiter` (prerequisite for a second instance)
+
+- [x] 3.7 Shopper email and Google sign-in (`feat/shopper-auth`)
 
 ## Phase 4: growth features
 
