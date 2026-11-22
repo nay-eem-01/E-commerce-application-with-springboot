@@ -1,5 +1,6 @@
 package com.ecommerce.catalog.media;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -23,6 +24,7 @@ public class S3ImageStorage implements ImageStorage {
 	private final StorageProperties properties;
 	private final S3Client s3;
 
+	@Autowired
 	public S3ImageStorage(StorageProperties properties) {
 		this(properties, client(properties.s3()));
 	}
