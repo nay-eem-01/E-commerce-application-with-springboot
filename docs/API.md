@@ -36,16 +36,21 @@ Swagger has every field. Breaking changes are recorded in `docs/DEV_LOG.md`.
 ### Auth (`/api/auth`, public)
 | Method | Path | Body → payload |
 |---|---|---|
-| POST | `/otp/request` | `{phone}` → `{expiresInSeconds, resendAfterSeconds}` |
-| POST | `/otp/verify` | `{phone, code, name?}` → `TokenResponse {accessToken, refreshToken, tokenType, expiresIn, user}` (creates the account on first sign-in) |
-| POST | `/sign-in` | `{email, password}` → `TokenResponse` (staff) |
+| POST | `/register` | `{email}` → null. Sends an account setup link for an available email. |
+| POST | `/verify-email` | `{token, password}` → `TokenResponse {accessToken, refreshToken, tokenType, expiresIn, user}`. Creates a verified shopper account. |
+| POST | `/sign-in` | `{email, password}` → `TokenResponse` (shoppers and staff). |
+| POST | `/google` | `{idToken}` from Google Identity Services → `TokenResponse` for shoppers. |
+| POST | `/password/forgot` | `{email}` → null. Sends a reset link for an eligible shopper. |
+| POST | `/password/reset` | `{token, password}` → `TokenResponse`. Revokes previous sessions. |
+| POST | `/otp/request` | Development and test only. `{phone}` → `{expiresInSeconds, resendAfterSeconds}`. |
+| POST | `/otp/verify` | Development and test only. `{phone, code, name?}` → `TokenResponse`. |
 | POST | `/refresh-token` | `{refreshToken}` → `TokenResponse` |
 | POST | `/sign-out` | (auth) → null |
 
 ### My account (`/api/users/me`, auth)
 | Method | Path | |
 |---|---|---|
-| GET / PUT | `/api/users/me` | profile `{id, name, phone, email, roles, hasPassword, mustChangePassword}`; PUT `{name, email?}` |
+| GET / PUT | `/api/users/me` | profile `{id, name, phone, email, roles, hasPassword, emailVerified, mustChangePassword}`; PUT `{name, email?}`. A verified sign-in email is read-only. |
 | POST | `/api/users/me/change-password` | `{currentPassword, newPassword}`; signs out every device |
 | GET / POST | `/api/users/me/addresses` | list / create `{fullName, phone, district, area, addressLine, defaultAddress}` |
 | PUT / DELETE | `/api/users/me/addresses/{id}` | edit / remove |

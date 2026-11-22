@@ -26,6 +26,11 @@ public final class ErrorCode {
 	public static final String ACCOUNT_BANNED = "This account is suspended. Contact support if you think this is a mistake.";
 	public static final String WRONG_CURRENT_PASSWORD = "Your current password is wrong.";
 	public static final String PASSWORD_NOT_SET = "This account signs in with a phone code and has no password.";
+	public static final String SMS_SIGN_IN_DISABLED = "SMS sign-in is unavailable.";
+	public static final String GOOGLE_SIGN_IN_DISABLED = "Google sign-in is unavailable.";
+	public static final String SHOPPER_EMAIL_UNAVAILABLE = "Email sign-in setup is unavailable.";
+	public static final String SHOPPER_PASSWORD_TOO_LONG = "Use a shorter password when it contains multibyte characters.";
+	public static final String INVALID_EMAIL_LINK = "This email link is invalid or has expired.";
 	public static final String EMAIL_TAKEN = "This email is already used by another account.";
 	public static final String USER_NOT_FOUND = "User not found.";
 	public static final String PASSWORD_CHANGE_REQUIRED = "Set a new password before continuing.";

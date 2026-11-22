@@ -15,20 +15,21 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Customers sign in with a phone code and usually have no password; staff sign in with
- * email and password. So phone, email and passwordHash are each nullable, and at least
- * one sign-in method is enforced by a database CHECK.
+ * Customers sign in with email and password or Google. Legacy phone accounts remain in the
+ * database. The database checks that each account has at least one sign-in identity.
  */
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
+@DynamicUpdate
 @Table(name = "users")
 public class User extends AuditModel {
 
@@ -48,6 +49,12 @@ public class User extends AuditModel {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 16)
 	private UserStatus status = UserStatus.ACTIVE;
+
+	@Column(name = "email_verified_at")
+	private Instant emailVerifiedAt;
+
+	@Column(name = "google_subject", unique = true)
+	private String googleSubject;
 
 	@Column(name = "phone_verified_at")
 	private Instant phoneVerifiedAt;

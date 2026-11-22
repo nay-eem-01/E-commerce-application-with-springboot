@@ -52,7 +52,7 @@ public class UserService {
 			throw ResponseException.conflict(ErrorCode.EMAIL_TAKEN);
 		}
 		// Staff sign in with their email, so they cannot clear it here.
-		if (email != null || user.getPasswordHash() == null) {
+		if (user.getEmailVerifiedAt() == null && (email != null || user.getPasswordHash() == null)) {
 			user.setEmail(email);
 		}
 		return MeResponse.from(user);

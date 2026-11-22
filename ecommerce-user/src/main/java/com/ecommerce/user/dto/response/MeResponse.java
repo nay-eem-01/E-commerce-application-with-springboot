@@ -13,6 +13,7 @@ public record MeResponse(
 		String email,
 		List<String> roles,
 		boolean hasPassword,
+		boolean emailVerified,
 		boolean mustChangePassword
 ) {
 	public static MeResponse from(User user) {
@@ -23,6 +24,7 @@ public record MeResponse(
 				user.getEmail(),
 				user.getRoles().stream().map(r -> r.getName().name()).sorted().toList(),
 				user.getPasswordHash() != null,
+				user.getEmailVerifiedAt() != null,
 				user.isMustChangePassword()
 		);
 	}

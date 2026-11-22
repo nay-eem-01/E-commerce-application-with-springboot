@@ -46,7 +46,8 @@ public class SecurityConfig {
 	};
 
 	private static final String[] PUBLIC_POST = {
-			"/api/auth/otp/request", "/api/auth/otp/verify", "/api/auth/sign-in", "/api/auth/refresh-token",
+			"/api/auth/register", "/api/auth/verify-email", "/api/auth/google",
+			"/api/auth/password/forgot", "/api/auth/password/reset", "/api/auth/otp/request", "/api/auth/otp/verify", "/api/auth/sign-in", "/api/auth/refresh-token",
 			"/api/checkout/quote", "/api/orders", "/api/orders/track", "/api/orders/pay", "/api/early-access",
 			// Payment providers post here without our token; every call is verified with the provider.
 			"/api/payments/*/callback", "/api/payments/*/ipn"

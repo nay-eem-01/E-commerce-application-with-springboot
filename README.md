@@ -1,7 +1,7 @@
 # Senpai Supply: anime merchandise shop backend
 
 Backend for an online shop selling anime figures, cosplay costumes, water bottles and bags
-in Bangladesh. Guest checkout with cash on delivery, phone-code sign-in, product pages built
+in Bangladesh. Guest checkout with cash on delivery, email and Google sign-in, product pages built
 around a 360 viewer, order tracking and verified-buyer reviews.
 
 **Stack:** Java 21 · Spring Boot 3.5 · PostgreSQL 15+ (16 and 17 fine) · Flyway · Spring Security + JWT ·
@@ -28,7 +28,7 @@ springdoc-openapi · Maven multi-module (modular monolith)
    ```bash
    cp .env.example .env
    ```
-   Fill `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET` (`openssl rand -base64 64`),
+   Fill `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET` (`openssl rand -base64 64 | tr -d '\n'`),
    `CORS_ALLOWED_ORIGINS`, and optionally `INITIAL_ADMIN_EMAIL`.
 3. Build and test:
    ```bash
@@ -40,6 +40,19 @@ springdoc-openapi · Maven multi-module (modular monolith)
    ```
    The development profile loads a demo catalog and prints sign-in codes to the log instead
    of sending SMS. Swagger UI: http://localhost:8080/swagger-ui.html
+
+## Shopper authentication
+
+Set `STOREFRONT_URL` to the storefront origin. Configure `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`,
+and the SMTP credentials so the backend can send account setup and password reset links.
+The auth emails use SMTP independently of the order email delivery setting. Signup and reset links
+expire in 30 minutes and work once. Shoppers choose a password after opening the signup link.
+
+For Google, create a Google Identity Services web client and list the storefront under Authorized
+JavaScript origins. Set `GOOGLE_CLIENT_ID` on the backend and the same value as
+`VITE_GOOGLE_CLIENT_ID` on the storefront. Google sign-in is available for verified Gmail and
+Google Workspace identities. Staff accounts continue to use their own email and password.
+SMS endpoints remain available in development and test for the legacy smoke test.
 
 ## Documentation
 
